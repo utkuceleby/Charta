@@ -156,16 +156,20 @@ internal static class SyntheticFont
 
     private static byte[] BuildName()
     {
-        var value = Encoding.BigEndianUnicode.GetBytes("ChartaTest");
+        var family = Encoding.BigEndianUnicode.GetBytes("Charta Test");
+        var subfamily = Encoding.BigEndianUnicode.GetBytes("Regular");
+        var postScript = Encoding.BigEndianUnicode.GetBytes("ChartaTest");
+
         return new BigEndianBuilder()
             .U16(0)                    // format
-            .U16(1)                    // count
-            .U16(18)                   // stringOffset
-            .U16(3).U16(1).U16(0x409)  // platform, encoding, language
-            .U16(6)                    // nameID: PostScript name
-            .U16((ushort)value.Length)
-            .U16(0)                    // string offset within storage
-            .Bytes(value)
+            .U16(3)                    // count
+            .U16(6 + 3 * 12)           // stringOffset
+            .U16(3).U16(1).U16(0x409).U16(1).U16((ushort)family.Length).U16(0)
+            .U16(3).U16(1).U16(0x409).U16(2).U16((ushort)subfamily.Length).U16((ushort)family.Length)
+            .U16(3).U16(1).U16(0x409).U16(6).U16((ushort)postScript.Length).U16((ushort)(family.Length + subfamily.Length))
+            .Bytes(family)
+            .Bytes(subfamily)
+            .Bytes(postScript)
             .ToArray();
     }
 
