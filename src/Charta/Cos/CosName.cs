@@ -94,4 +94,16 @@ internal static class CosNames
     public static readonly CosName Length1 = CosName.Get("Length1");
     public static readonly CosName DW = CosName.Get("DW");
     public static readonly CosName CidToGidMap = CosName.Get("CIDToGIDMap");
+    public static readonly CosName XObject = CosName.Get("XObject");
+    public static readonly CosName Image = CosName.Get("Image");
+    public static readonly CosName Width = CosName.Get("Width");
+    public static readonly CosName Height = CosName.Get("Height");
+    public static readonly CosName BitsPerComponent = CosName.Get("BitsPerComponent");
+    public static readonly CosName ColorSpace = CosName.Get("ColorSpace");
+    public static readonly CosName DeviceGray = CosName.Get("DeviceGray");
+    public static readonly CosName DeviceRgb = CosName.Get("DeviceRGB");
+    public static readonly CosName DeviceCmyk = CosName.Get("DeviceCMYK");
+    public static readonly CosName Indexed = CosName.Get("Indexed");
+    public static readonly CosName DctDecode = CosName.Get("DCTDecode");
+    public static readonly CosName SMask = CosName.Get("SMask");
 }
