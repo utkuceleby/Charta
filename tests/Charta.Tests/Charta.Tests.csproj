@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Charta\Charta.csproj" />
+    <ProjectReference Include="..\Charta.Smoke\Charta.Smoke.csproj" />
   </ItemGroup>
 
   <ItemGroup>

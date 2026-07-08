@@ -1,0 +1,191 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using Charta.Cos;
+
+namespace Charta.Fonts;
+
+/// <summary>
+/// A font prepared for PDF embedding. Tracks which glyphs the document uses, then writes a subset
+/// Type0/Identity-H composite font (ISO 32000-2 §9.7): fonts are always embedded and always composite —
+/// a single code path that PDF/A and PDF/UA both accept.
+/// </summary>
+internal sealed class PdfFont
+{
+    private readonly SfntFont _font;
+    private readonly SortedSet<ushort> _usedGlyphs = [0];
+    private readonly SortedDictionary<ushort, string> _glyphText = [];
+    private bool _written;
+
+    private PdfFont(SfntFont font) => _font = font;
+
+    public static PdfFont Parse(ReadOnlyMemory<byte> fontData, int ttcIndex = 0) =>
+        new(SfntFont.Parse(fontData, ttcIndex));
+
+    public int UnitsPerEm => _font.UnitsPerEm;
+
+    /// <summary>
+    /// Simple shaping: one glyph per codepoint via cmap, advances from hmtx. No substitution,
+    /// positioning, or bidi — those arrive with the shaping layer. Records glyph usage for subsetting.
+    /// </summary>
+    public ShapedText Shape(string text)
+    {
+        if (_written)
+        {
+            throw new InvalidOperationException("The font has already been written; no further text can be shaped with it.");
+        }
+
+        var glyphs = new List<ushort>(text.Length);
+        long widthFontUnits = 0;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            var gid = _font.MapCodepoint(rune.Value);
+            glyphs.Add(gid);
+            widthFontUnits += _font.AdvanceWidth(gid);
+            _usedGlyphs.Add(gid);
+            if (gid != 0)
+            {
+                _glyphText.TryAdd(gid, rune.ToString());
+            }
+        }
+
+        return new ShapedText([.. glyphs], widthFontUnits * 1000.0 / _font.UnitsPerEm);
+    }
+
+    /// <summary>Writes the full font object graph; <paramref name="fontReference"/> becomes the Type0 font.</summary>
+    public void Write(PdfWriter writer, CosReference fontReference)
+    {
+        _written = true;
+
+        var subset = TrueTypeSubsetter.CreateSubset(_font, GlyphClosure.Compute(_font, _usedGlyphs));
+        var baseFont = CosName.Get(SubsetTag(subset) + "+" + _font.PostScriptName);
+
+        var cidFontRef = writer.Allocate();
+        var descriptorRef = writer.Allocate();
+        var fontFileRef = writer.Allocate();
+        var toUnicodeRef = writer.Allocate();
+
+        var fontFile = new CosStream(subset);
+        fontFile.Dictionary[CosNames.Length1] = new CosInteger(subset.Length);
+        writer.WriteObject(fontFileRef, fontFile);
+
+        var scale = 1000.0 / _font.UnitsPerEm;
+        var descriptor = new CosDictionary
+        {
+            [CosNames.Type] = CosNames.FontDescriptor,
+            [CosNames.FontName] = baseFont,
+            // Symbolic: the font's built-in encoding is used (standard for Identity-H CID fonts).
+            [CosNames.Flags] = new CosInteger(4),
+            [CosNames.FontBBox] = CosArray.OfIntegers(
+                Scaled(_font.XMin), Scaled(_font.YMin), Scaled(_font.XMax), Scaled(_font.YMax)),
+            [CosNames.ItalicAngle] = new CosReal(_font.ItalicAngle),
+            [CosNames.Ascent] = new CosInteger(Scaled(_font.Ascender)),
+            [CosNames.Descent] = new CosInteger(Scaled(_font.Descender)),
+            [CosNames.CapHeight] = new CosInteger(Scaled(_font.CapHeight)),
+            [CosNames.StemV] = new CosInteger(EstimateStemV(_font.WeightClass)),
+            [CosNames.FontFile2] = fontFileRef,
+        };
+        writer.WriteObject(descriptorRef, descriptor);
+
+        var cidSystemInfo = new CosDictionary
+        {
+            [CosNames.Registry] = CosString.FromAscii("Adobe"),
+            [CosNames.Ordering] = CosString.FromAscii("Identity"),
+            [CosNames.Supplement] = new CosInteger(0),
+        };
+        var cidFont = new CosDictionary
+        {
+            [CosNames.Type] = CosNames.Font,
+            [CosNames.Subtype] = CosNames.CidFontType2,
+            [CosNames.BaseFont] = baseFont,
+            [CosNames.CidSystemInfo] = cidSystemInfo,
+            [CosNames.FontDescriptor] = descriptorRef,
+            [CosNames.DW] = new CosInteger(1000),
+            [CosNames.W] = BuildWidths(scale),
+            [CosNames.CidToGidMap] = CosNames.Identity,
+        };
+        writer.WriteObject(cidFontRef, cidFont);
+
+        writer.WriteObject(toUnicodeRef, new CosStream(ToUnicodeCmap.Build(_glyphText)));
+
+        var type0 = new CosDictionary
+        {
+            [CosNames.Type] = CosNames.Font,
+            [CosNames.Subtype] = CosNames.Type0,
+            [CosNames.BaseFont] = baseFont,
+            [CosNames.Encoding] = CosNames.IdentityH,
+            [CosNames.DescendantFonts] = new CosArray(cidFontRef),
+            [CosNames.ToUnicode] = toUnicodeRef,
+        };
+        writer.WriteObject(fontReference, type0);
+
+        int Scaled(int fontUnits) => (int)Math.Round(fontUnits * scale);
+    }
+
+    /// <summary>W array with runs of consecutive glyph IDs: [ first [w w ...] first [w] ... ].</summary>
+    private CosArray BuildWidths(double scale)
+    {
+        var w = new CosArray();
+        var gids = _usedGlyphs.ToList();
+        var i = 0;
+        while (i < gids.Count)
+        {
+            var runStart = i;
+            while (i + 1 < gids.Count && gids[i + 1] == gids[i] + 1)
+            {
+                i++;
+            }
+
+            w.Add(new CosInteger(gids[runStart]));
+            var widths = new CosArray();
+            for (var j = runStart; j <= i; j++)
+            {
+                widths.Add(new CosInteger((int)Math.Round(_font.AdvanceWidth(gids[j]) * scale)));
+            }
+
+            w.Add(widths);
+            i++;
+        }
+
+        return w;
+    }
+
+    /// <summary>Six uppercase letters derived from the subset bytes — unique per subset yet deterministic.</summary>
+    private static string SubsetTag(byte[] subset)
+    {
+        Span<byte> hash = stackalloc byte[32];
+        _ = SHA256.HashData(subset, hash);
+        Span<char> tag = stackalloc char[6];
+        for (var i = 0; i < 6; i++)
+        {
+            tag[i] = (char)('A' + hash[i] % 26);
+        }
+
+        return new string(tag);
+    }
+
+    /// <summary>Common heuristic: no free font exposes real stem widths, so estimate from the weight class.</summary>
+    private static int EstimateStemV(ushort weightClass) => 10 + 220 * (Math.Clamp(weightClass, (ushort)100, (ushort)900) - 50) / 900;
+}
+
+/// <summary>Result of shaping a text run: glyph IDs in visual order and the total advance in 1/1000 em.</summary>
+internal sealed class ShapedText(ushort[] glyphIds, double width)
+{
+    public IReadOnlyList<ushort> GlyphIds { get; } = glyphIds;
+
+    public double Width { get; } = width;
+
+    /// <summary>Identity-H character codes as a PDF hex string, e.g. &lt;0001 0002&gt; without spaces.</summary>
+    public string ToHexString()
+    {
+        var sb = new StringBuilder(GlyphIds.Count * 4 + 2);
+        sb.Append('<');
+        foreach (var gid in GlyphIds)
+        {
+            sb.Append(gid.ToString("X4", CultureInfo.InvariantCulture));
+        }
+
+        sb.Append('>');
+        return sb.ToString();
+    }
+}

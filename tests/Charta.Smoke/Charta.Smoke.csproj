@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Charta\Charta.csproj" />
+    <InternalsVisibleTo Include="Charta.Tests" />
   </ItemGroup>
 
 </Project>

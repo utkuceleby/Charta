@@ -71,4 +71,27 @@ internal static class CosNames
     public static readonly CosName XRef = CosName.Get("XRef");
     public static readonly CosName W = CosName.Get("W");
     public static readonly CosName Index = CosName.Get("Index");
+    public static readonly CosName Type0 = CosName.Get("Type0");
+    public static readonly CosName CidFontType2 = CosName.Get("CIDFontType2");
+    public static readonly CosName IdentityH = CosName.Get("Identity-H");
+    public static readonly CosName Identity = CosName.Get("Identity");
+    public static readonly CosName DescendantFonts = CosName.Get("DescendantFonts");
+    public static readonly CosName ToUnicode = CosName.Get("ToUnicode");
+    public static readonly CosName CidSystemInfo = CosName.Get("CIDSystemInfo");
+    public static readonly CosName Registry = CosName.Get("Registry");
+    public static readonly CosName Ordering = CosName.Get("Ordering");
+    public static readonly CosName Supplement = CosName.Get("Supplement");
+    public static readonly CosName FontDescriptor = CosName.Get("FontDescriptor");
+    public static readonly CosName FontName = CosName.Get("FontName");
+    public static readonly CosName Flags = CosName.Get("Flags");
+    public static readonly CosName FontBBox = CosName.Get("FontBBox");
+    public static readonly CosName ItalicAngle = CosName.Get("ItalicAngle");
+    public static readonly CosName Ascent = CosName.Get("Ascent");
+    public static readonly CosName Descent = CosName.Get("Descent");
+    public static readonly CosName CapHeight = CosName.Get("CapHeight");
+    public static readonly CosName StemV = CosName.Get("StemV");
+    public static readonly CosName FontFile2 = CosName.Get("FontFile2");
+    public static readonly CosName Length1 = CosName.Get("Length1");
+    public static readonly CosName DW = CosName.Get("DW");
+    public static readonly CosName CidToGidMap = CosName.Get("CIDToGIDMap");
 }
