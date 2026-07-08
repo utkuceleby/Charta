@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CI: true
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build
+        run: dotnet build -c Release
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+  zero-dependency-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert core package has no dependencies
+        run: |
+          if grep -q '<PackageReference' src/Charta/Charta.csproj; then
+            echo "::error::src/Charta/Charta.csproj must not contain PackageReference items."
+            exit 1
+          fi
+
+  qpdf-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install qpdf
+        run: sudo apt-get update && sudo apt-get install -y qpdf
+      - name: Generate documents
+        run: dotnet run --project tests/Charta.Smoke -c Release -- out
+      - name: Validate structure
+        run: |
+          for f in out/*.pdf; do
+            echo "checking $f"
+            qpdf --check "$f"
+          done
+
+  aot-parity:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: JIT run
+        run: dotnet run --project tests/Charta.Smoke -c Release -- jit-out > jit.txt
+      - name: AOT publish
+        run: dotnet publish tests/Charta.Smoke -c Release -r ${{ matrix.rid }} -o aot-publish
+      - name: AOT run (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: ./aot-publish/Charta.Smoke aot-out > aot.txt
+      - name: AOT run (Windows)
+        if: runner.os == 'Windows'
+        run: ./aot-publish/Charta.Smoke.exe aot-out > aot.txt
+      - name: Compare outputs
+        shell: bash
+        run: diff jit.txt aot.txt

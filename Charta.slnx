@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Charta/Charta.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Charta.Smoke/Charta.Smoke.csproj" />
+    <Project Path="tests/Charta.Tests/Charta.Tests.csproj" />
+  </Folder>
+</Solution>
