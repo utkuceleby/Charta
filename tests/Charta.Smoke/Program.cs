@@ -32,6 +32,9 @@ byte[] rgbaPixels =
 var png = PngFixtures.Build(2, 2, 8, colorType: 6, rgbaPixels, filterType: 4);
 Emit("image-sample.pdf", stream => ImageSampleDocument.Write(stream, png, classicUncompressed));
 
+Emit("layout-sample.pdf", stream => LayoutSample.Build().Generate(stream, classicUncompressed));
+Emit("layout-sample-compressed.pdf", stream => LayoutSample.Build().Generate(stream, streamCompressed), golden: false);
+
 // Optional second argument: a real font file to exercise the pipeline with (system-dependent, never golden).
 if (args.Length > 1)
 {

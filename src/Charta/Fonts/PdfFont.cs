@@ -26,6 +26,12 @@ internal sealed class PdfFont
 
     public int UnitsPerEm => _font.UnitsPerEm;
 
+    /// <summary>Typographic ascent as a fraction of the em size.</summary>
+    public double AscentRatio => (double)_font.Ascender / _font.UnitsPerEm;
+
+    /// <summary>Typographic descent as a fraction of the em size (negative below the baseline).</summary>
+    public double DescentRatio => (double)_font.Descender / _font.UnitsPerEm;
+
     /// <summary>True when the font's cmap covers the codepoint (used by fallback chains).</summary>
     public bool CanMap(int codepoint) => _font.MapCodepoint(codepoint) != 0;
 
