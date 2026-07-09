@@ -1,4 +1,5 @@
 using Charta.Cos;
+using Charta.Smoke;
 using Xunit;
 
 namespace Charta.Tests.Cos;
@@ -18,9 +19,9 @@ public class GoldenTests
             255, 0, 0, 255, 0, 255, 0, 128,
             0, 0, 255, 255, 255, 255, 255, 64,
         ];
-        var png = Charta.Smoke.PngFixtures.Build(2, 2, 8, colorType: 6, rgbaPixels, filterType: 4);
+        var png = PngFixtures.Build(2, 2, 8, colorType: 6, rgbaPixels, filterType: 4);
         using var buffer = new MemoryStream();
-        Charta.Imaging.ImageSampleDocument.Write(buffer, png, new PdfWriterOptions
+        ImageSampleDocument.Write(buffer, png, new PdfWriterOptions
         {
             XrefMode = XrefMode.Classic,
             CompressStreams = false,

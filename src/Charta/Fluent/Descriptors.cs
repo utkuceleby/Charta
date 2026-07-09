@@ -106,6 +106,16 @@ public interface ITextDescriptor
     ITextDescriptor Italic();
 }
 
+/// <summary>Describes stacked layers sharing the same bounds.</summary>
+public interface ILayersDescriptor
+{
+    /// <summary>Adds a decoration layer. Layers declared before the primary render below it, after — above.</summary>
+    IContainer Layer();
+
+    /// <summary>The layer that defines size and pagination. Exactly one is required.</summary>
+    IContainer PrimaryLayer();
+}
+
 /// <summary>A reusable document fragment.</summary>
 public interface IComponent
 {

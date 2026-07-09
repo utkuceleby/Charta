@@ -1,14 +1,17 @@
+using System.Globalization;
 using System.Text;
+using Charta.Cos;
+using Charta.Imaging;
 
-namespace Charta.Cos;
+namespace Charta.Smoke;
 
 /// <summary>
-/// M0 walking-skeleton document: one A4 page with a single line of text using an unembedded standard font.
-/// Exists only to exercise the writer end to end; it is removed once the font layer (M1) lands.
+/// M1 test fixture: one A4 page with an image placed via the cm/Do content operators.
+/// Exercises the decode → XObject → placement pipeline below the layout engine.
 /// </summary>
-internal static class HelloPdf
+internal static class ImageSampleDocument
 {
-    public static void Write(Stream output, PdfWriterOptions? options = null)
+    public static void Write(Stream output, ReadOnlyMemory<byte> imageData, PdfWriterOptions? options = null)
     {
         using var writer = new PdfWriter(output, options);
         writer.WriteHeader();
@@ -17,28 +20,25 @@ internal static class HelloPdf
         var pages = writer.Allocate();
         var page = writer.Allocate();
         var content = writer.Allocate();
-        var font = writer.Allocate();
+        var image = writer.Allocate();
 
-        var fontDict = new CosDictionary
+        var pdfImage = PdfImage.FromBytes(imageData);
+        pdfImage.Write(writer, image);
+
+        // Scale the image to 200 points wide, preserving aspect ratio, at (72, 560).
+        var height = 200.0 * pdfImage.Height / pdfImage.Width;
+        var contentText = string.Create(
+            CultureInfo.InvariantCulture,
+            $"q\n200 0 0 {CosReal.Format(height)} 72 560 cm\n/Im1 Do\nQ\n");
+        writer.WriteObject(content, new CosStream(Encoding.ASCII.GetBytes(contentText)));
+
+        var xObjects = new CosDictionary
         {
-            [CosNames.Type] = CosNames.Font,
-            [CosNames.Subtype] = CosName.Get("Type1"),
-            [CosNames.BaseFont] = CosName.Get("Helvetica"),
-            [CosNames.Encoding] = CosName.Get("WinAnsiEncoding"),
-        };
-        writer.WriteObject(font, fontDict);
-
-        var contentStream = new CosStream(Encoding.ASCII.GetBytes(
-            "BT\n/F1 24 Tf\n72 770 Td\n(Hello from Charta) Tj\nET\n"));
-        writer.WriteObject(content, contentStream);
-
-        var fontResources = new CosDictionary
-        {
-            [CosName.Get("F1")] = font,
+            [CosName.Get("Im1")] = image,
         };
         var resources = new CosDictionary
         {
-            [CosNames.Font] = fontResources,
+            [CosNames.XObject] = xObjects,
         };
         var pageDict = new CosDictionary
         {
@@ -50,11 +50,10 @@ internal static class HelloPdf
         };
         writer.WriteObject(page, pageDict);
 
-        var kids = new CosArray(page);
         var pagesDict = new CosDictionary
         {
             [CosNames.Type] = CosNames.Pages,
-            [CosNames.Kids] = kids,
+            [CosNames.Kids] = new CosArray(page),
             [CosNames.Count] = new CosInteger(1),
         };
         writer.WriteObject(pages, pagesDict);

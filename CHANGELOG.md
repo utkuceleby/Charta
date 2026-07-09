@@ -21,6 +21,9 @@ All notable changes to Charta are documented here. The format follows
   flat memory, repeating header/footer bands.
 - UAX#14 line breaking (Unicode 16.0), 100% conformant with the official test suite.
 - Fluent API: `Document.Create`, container extensions (padding, background, border, alignment,
-  constraints, column, row, text, image, rules, page breaks), text styling, `IComponent`,
-  hyperlinks, sections/internal links, outline bookmarks, document metadata (Info + XMP).
+  constraints, column, row, text, image, rules, page breaks, extend, layers), text styling,
+  `IComponent`, hyperlinks, sections/internal links, outline bookmarks, document metadata
+  (Info + XMP).
 - Public API surface locked by an approval test.
+- Benchmarks against QuestPDF and MigraDoc/PDFsharp (see `benchmarks/README.md`) and an examples
+  gallery (`examples/`).

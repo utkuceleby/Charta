@@ -21,10 +21,12 @@ namespace Charta
         public static Charta.IContainer Border(this Charta.IContainer container, double thickness, Charta.Color color) { }
         public static void Column(this Charta.IContainer container, System.Action<Charta.IColumnDescriptor> content) { }
         public static void Component(this Charta.IContainer container, Charta.IComponent component) { }
+        public static Charta.IContainer Extend(this Charta.IContainer container) { }
         public static Charta.IContainer Height(this Charta.IContainer container, double value) { }
         public static Charta.IContainer Hyperlink(this Charta.IContainer container, string url) { }
         public static void Image(this Charta.IContainer container, byte[] imageData) { }
         public static void Image(this Charta.IContainer container, string filePath) { }
+        public static void Layers(this Charta.IContainer container, System.Action<Charta.ILayersDescriptor> content) { }
         public static void LineHorizontal(this Charta.IContainer container, double thickness) { }
         public static void LineHorizontal(this Charta.IContainer container, double thickness, Charta.Color color) { }
         public static Charta.IContainer MaxHeight(this Charta.IContainer container, double value) { }
@@ -74,6 +76,11 @@ namespace Charta
     {
         void Metadata(System.Action<Charta.IMetadataDescriptor> configure);
         void Page(System.Action<Charta.IPageDescriptor> configure);
+    }
+    public interface ILayersDescriptor
+    {
+        Charta.IContainer Layer();
+        Charta.IContainer PrimaryLayer();
     }
     public interface IMetadataDescriptor
     {

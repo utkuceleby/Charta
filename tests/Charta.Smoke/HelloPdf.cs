@@ -1,17 +1,15 @@
-using System.Globalization;
 using System.Text;
 using Charta.Cos;
 
-namespace Charta.Fonts;
+namespace Charta.Smoke;
 
 /// <summary>
-/// M1 scaffolding document: one A4 page of text set in an embedded, subsetted TrueType font.
-/// Exercises the full parse → shape → subset → embed pipeline end to end until the layout
-/// engine (M2) replaces it.
+/// The M0 walking-skeleton document: one A4 page with a single line of text using an unembedded
+/// standard font. Kept as a writer-level test fixture — its goldens pin the COS serializer's bytes.
 /// </summary>
-internal static class FontSampleDocument
+internal static class HelloPdf
 {
-    public static void Write(Stream output, ReadOnlyMemory<byte> fontData, string text, PdfWriterOptions? options = null)
+    public static void Write(Stream output, PdfWriterOptions? options = null)
     {
         using var writer = new PdfWriter(output, options);
         writer.WriteHeader();
@@ -22,14 +20,18 @@ internal static class FontSampleDocument
         var content = writer.Allocate();
         var font = writer.Allocate();
 
-        var pdfFont = PdfFont.Parse(fontData);
-        var shaped = pdfFont.Shape(text);
-        pdfFont.Write(writer, font);
+        var fontDict = new CosDictionary
+        {
+            [CosNames.Type] = CosNames.Font,
+            [CosNames.Subtype] = CosName.Get("Type1"),
+            [CosNames.BaseFont] = CosName.Get("Helvetica"),
+            [CosNames.Encoding] = CosName.Get("WinAnsiEncoding"),
+        };
+        writer.WriteObject(font, fontDict);
 
-        var contentText = string.Create(
-            CultureInfo.InvariantCulture,
-            $"BT\n/F1 24 Tf\n72 770 Td\n{shaped.ToTextOperator()}\nET\n");
-        writer.WriteObject(content, new CosStream(Encoding.ASCII.GetBytes(contentText)));
+        var contentStream = new CosStream(Encoding.ASCII.GetBytes(
+            "BT\n/F1 24 Tf\n72 770 Td\n(Hello from Charta) Tj\nET\n"));
+        writer.WriteObject(content, contentStream);
 
         var fontResources = new CosDictionary
         {
@@ -49,10 +51,11 @@ internal static class FontSampleDocument
         };
         writer.WriteObject(page, pageDict);
 
+        var kids = new CosArray(page);
         var pagesDict = new CosDictionary
         {
             [CosNames.Type] = CosNames.Pages,
-            [CosNames.Kids] = new CosArray(page),
+            [CosNames.Kids] = kids,
             [CosNames.Count] = new CosInteger(1),
         };
         writer.WriteObject(pages, pagesDict);

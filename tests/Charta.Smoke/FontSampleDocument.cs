@@ -1,16 +1,17 @@
 using System.Globalization;
 using System.Text;
 using Charta.Cos;
+using Charta.Fonts;
 
-namespace Charta.Imaging;
+namespace Charta.Smoke;
 
 /// <summary>
-/// M1 scaffolding document: one A4 page with an image placed via the cm/Do content operators.
-/// Exercises decode → XObject → placement end to end until the layout engine (M2) replaces it.
+/// M1 test fixture: one A4 page of text set in an embedded, subsetted TrueType font.
+/// Exercises the parse → shape → subset → embed pipeline below the layout engine.
 /// </summary>
-internal static class ImageSampleDocument
+internal static class FontSampleDocument
 {
-    public static void Write(Stream output, ReadOnlyMemory<byte> imageData, PdfWriterOptions? options = null)
+    public static void Write(Stream output, ReadOnlyMemory<byte> fontData, string text, PdfWriterOptions? options = null)
     {
         using var writer = new PdfWriter(output, options);
         writer.WriteHeader();
@@ -19,25 +20,24 @@ internal static class ImageSampleDocument
         var pages = writer.Allocate();
         var page = writer.Allocate();
         var content = writer.Allocate();
-        var image = writer.Allocate();
+        var font = writer.Allocate();
 
-        var pdfImage = PdfImage.FromBytes(imageData);
-        pdfImage.Write(writer, image);
+        var pdfFont = PdfFont.Parse(fontData);
+        var shaped = pdfFont.Shape(text);
+        pdfFont.Write(writer, font);
 
-        // Scale the image to 200 points wide, preserving aspect ratio, at (72, 560).
-        var height = 200.0 * pdfImage.Height / pdfImage.Width;
         var contentText = string.Create(
             CultureInfo.InvariantCulture,
-            $"q\n200 0 0 {CosReal.Format(height)} 72 560 cm\n/Im1 Do\nQ\n");
+            $"BT\n/F1 24 Tf\n72 770 Td\n{shaped.ToTextOperator()}\nET\n");
         writer.WriteObject(content, new CosStream(Encoding.ASCII.GetBytes(contentText)));
 
-        var xObjects = new CosDictionary
+        var fontResources = new CosDictionary
         {
-            [CosName.Get("Im1")] = image,
+            [CosName.Get("F1")] = font,
         };
         var resources = new CosDictionary
         {
-            [CosNames.XObject] = xObjects,
+            [CosNames.Font] = fontResources,
         };
         var pageDict = new CosDictionary
         {

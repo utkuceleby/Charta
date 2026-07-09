@@ -192,4 +192,20 @@ public static class ContainerExtensions
         Impl(container).AddWrapper((_, e) => new SectionElement(e, "bookmark:" + title, title));
         return container;
     }
+
+    /// <summary>Stretches the content to fill the remaining space. Use as the last item of a column.</summary>
+    public static IContainer Extend(this IContainer container)
+    {
+        Impl(container).AddWrapper((_, e) => new ExtendElement(e));
+        return container;
+    }
+
+    /// <summary>Fills the slot with stacked layers: watermarks and backgrounds below, stamps above.</summary>
+    public static void Layers(this IContainer container, Action<ILayersDescriptor> content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var descriptor = new LayersDescriptor();
+        content(descriptor);
+        Impl(container).SetSource(descriptor.Build);
+    }
 }

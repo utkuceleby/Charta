@@ -10,15 +10,20 @@
 
   <PropertyGroup>
     <PackageId>Charta</PackageId>
-    <Version>0.0.1-alpha</Version>
+    <Version>0.1.0-preview.1</Version>
     <Authors>Utku Celebi</Authors>
-    <Description>A permanently-MIT PDF generation library for .NET: fluent layout API, zero native dependencies, streaming output, NativeAOT-ready.</Description>
+    <Description>A permanently-MIT PDF generation library for .NET: fluent layout API, automatic pagination and UAX#14 line breaking, TrueType subsetting with kerning, zero dependencies, streaming output, NativeAOT-ready.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>pdf;pdf-generation;document;report;invoice</PackageTags>
+    <PackageTags>pdf;pdf-generation;document;report;invoice;layout;fonts</PackageTags>
+    <PackageProjectUrl>https://github.com/utkuceleby/Charta</PackageProjectUrl>
+    <PackageReleaseNotes>See CHANGELOG.md in the repository.</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/utkuceleby/Charta</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 

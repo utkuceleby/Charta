@@ -148,6 +148,38 @@ internal sealed class RowDescriptor : IRowDescriptor
             _spacing);
 }
 
+internal sealed class LayersDescriptor : ILayersDescriptor
+{
+    private readonly List<(ContainerImpl Container, bool IsPrimary)> _layers = [];
+
+    public IContainer Layer()
+    {
+        var layer = new ContainerImpl();
+        _layers.Add((layer, false));
+        return layer;
+    }
+
+    public IContainer PrimaryLayer()
+    {
+        var layer = new ContainerImpl();
+        _layers.Add((layer, true));
+        return layer;
+    }
+
+    public Element Build(BuildContext context)
+    {
+        var primaryIndex = _layers.FindIndex(l => l.IsPrimary);
+        if (primaryIndex < 0 || _layers.Count(l => l.IsPrimary) > 1)
+        {
+            throw new InvalidOperationException("Layers require exactly one PrimaryLayer().");
+        }
+
+        var below = _layers.Take(primaryIndex).Select(l => l.Container.Build(context)).ToList();
+        var above = _layers.Skip(primaryIndex + 1).Select(l => l.Container.Build(context)).ToList();
+        return new LayersElement(_layers[primaryIndex].Container.Build(context), below, above);
+    }
+}
+
 internal sealed class TextDescriptor(string text) : ITextDescriptor
 {
     private string? _family;

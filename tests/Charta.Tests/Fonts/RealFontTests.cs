@@ -1,6 +1,7 @@
 using System.Text;
 using Charta.Cos;
 using Charta.Fonts;
+using Charta.Smoke;
 using Xunit;
 
 namespace Charta.Tests.Fonts;
