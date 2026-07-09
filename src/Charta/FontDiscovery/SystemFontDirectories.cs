@@ -47,6 +47,10 @@ internal static class SystemFontDirectories
         }
     }
 
+    /// <summary>Test seam: parses a fontconfig file into directory entries.</summary>
+    internal static void CollectFontconfigDirectories(List<string> directories, string configPath) =>
+        AddFontconfigDirectories(directories, configPath, depth: 0);
+
     /// <summary>Reads &lt;dir&gt; entries (and follows &lt;include&gt; one level of globbing) from fontconfig XML.</summary>
     private static void AddFontconfigDirectories(List<string> directories, string configPath, int depth)
     {
