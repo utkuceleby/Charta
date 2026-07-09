@@ -68,8 +68,21 @@ internal sealed class TextElement(string text, TextStyle style) : Element
             : MeasureResult.Partial(width, fit * lineHeight);
     }
 
+    private bool _complexScriptReported;
+
     public override void Draw(DrawingContext context, in LayoutRect bounds)
     {
+        if (!_complexScriptReported && ScriptSupport.ContainsComplexScript(text))
+        {
+            _complexScriptReported = true;
+            context.AddDiagnostic(
+                nameof(TextElement),
+                "The text contains a script that needs complex shaping or right-to-left layout " +
+                "(Arabic, Hebrew, Indic, …). Without the shaping add-on it renders unjoined and " +
+                "without bidi reordering — both the visual output and text extraction will be " +
+                "incorrect for this run.");
+        }
+
         var lines = BuildLines(bounds.Width);
         var lineHeight = LineHeight;
         var fit = Math.Min(lines.Count - _nextLine, Math.Max(0, (int)((bounds.Height + 0.01) / lineHeight)));

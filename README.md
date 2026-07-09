@@ -36,6 +36,14 @@ var result = Document.Create(doc =>
 
 Fonts resolve against explicitly registered files first (`FontManager.RegisterFont(...)` — the reproducible path for servers and containers), then against the operating system's installed fonts. Registered TrueType fonts are always subset and embedded.
 
+### Script support today
+
+| Scripts | Status |
+|---|---|
+| Latin (incl. Turkish, Polish, Vietnamese), Cyrillic, Greek | ✅ Full: correct rendering, kerning, and text extraction |
+| CJK | ✅ Rendering, UAX#14 line breaking, and extraction (no vertical text yet) |
+| Arabic, Hebrew, Indic, and other complex/RTL scripts | ⚠️ Renders unjoined and without bidi reordering; a `LayoutDiagnostic` tells you loudly. Correct shaping arrives with the HarfBuzz add-on package on the roadmap. |
+
 ## Why another PDF library?
 
 Every free .NET PDF option forces a trade-off: a modern fluent layout engine is revenue-gated, the permissively-licensed veteran has no modern layout engine or text shaping, and the most feature-complete library is AGPL. Charta aims to close that gap: a document generation engine that is MIT forever, has no revenue thresholds, no native binary payload in the core package, and treats digital signatures, complex-script text, and PDF/A + PDF/UA compliance as first-class free features.

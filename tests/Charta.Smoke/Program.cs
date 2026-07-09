@@ -39,6 +39,11 @@ Charta.FontManager.RegisterFont(font);
 Emit("fluent-sample.pdf", stream => FluentSample.Build().Generate(stream, classicUncompressed, Charta.OverflowBehavior.Clip));
 Emit("fluent-sample-compressed.pdf", stream => FluentSample.Build().GeneratePdf(stream), golden: false);
 
+if (MultiScriptSample.Build() is { } multiScript)
+{
+    Emit("multiscript-sample.pdf", stream => multiScript.GeneratePdf(stream), golden: false);
+}
+
 // Optional second argument: a real font file to exercise the pipeline with (system-dependent, never golden).
 if (args.Length > 1)
 {
