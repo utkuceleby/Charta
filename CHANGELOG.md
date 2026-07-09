@@ -5,6 +5,21 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.5.0]
+
+### Added
+
+- **PDF/A-2b** archival conformance via `new PdfSaveOptions { Conformance = PdfConformance.PdfA2b }`:
+  an embedded sRGB output intent (a compact ICC profile generated in code — no binary asset), pdfaid
+  XMP metadata, print-flagged annotations, and always-embedded subset fonts. Verified compliant by
+  the official veraPDF validator (144/144 rules) in CI. Free archival compliance — something no other
+  permissively-licensed .NET PDF library offers. (Provide a font that covers all your text: PDF/A
+  forbids showing the .notdef glyph.)
+
+### Changed
+
+- Link annotations now carry the Print flag.
+
 ## [1.4.0]
 
 ### Added

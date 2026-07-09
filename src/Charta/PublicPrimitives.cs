@@ -75,6 +75,19 @@ public enum OverflowBehavior
     Throw,
 }
 
+/// <summary>PDF conformance level to target.</summary>
+public enum PdfConformance
+{
+    /// <summary>No conformance constraints (the default).</summary>
+    None,
+
+    /// <summary>
+    /// PDF/A-2b: archival conformance, basic level. Embeds an sRGB output intent and pdfaid metadata,
+    /// marks annotations for printing, and always embeds fonts. Requires document metadata.
+    /// </summary>
+    PdfA2b,
+}
+
 /// <summary>Options for <see cref="Document.GeneratePdf(Stream, PdfSaveOptions?, CancellationToken)"/>.</summary>
 public sealed class PdfSaveOptions
 {
@@ -89,6 +102,9 @@ public sealed class PdfSaveOptions
     /// for finding layout problems during development. Off in production.
     /// </summary>
     public bool DebugLayout { get; init; }
+
+    /// <summary>Conformance level to target. Default: none.</summary>
+    public PdfConformance Conformance { get; init; } = PdfConformance.None;
 }
 
 /// <summary>Thrown only under <see cref="OverflowBehavior.Throw"/>; carries the diagnostic that would have been recorded.</summary>

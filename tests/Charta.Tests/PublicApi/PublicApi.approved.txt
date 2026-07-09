@@ -225,10 +225,16 @@ namespace Charta
         public static readonly Charta.PageSize Legal;
         public static readonly Charta.PageSize Letter;
     }
+    public enum PdfConformance
+    {
+        None = 0,
+        PdfA2b = 1,
+    }
     public sealed class PdfSaveOptions
     {
         public PdfSaveOptions() { }
         public bool Compress { get; init; }
+        public Charta.PdfConformance Conformance { get; init; }
         public bool DebugLayout { get; init; }
         public Charta.OverflowBehavior Overflow { get; init; }
     }

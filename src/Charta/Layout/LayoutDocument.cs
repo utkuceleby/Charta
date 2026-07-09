@@ -61,6 +61,7 @@ internal sealed class LayoutDocument
         DocumentMetadata? metadata = null,
         Charta.Signing.SigningRequest? signing = null,
         bool debugOverflow = false,
+        PdfConformance conformance = PdfConformance.None,
         CancellationToken cancellationToken = default)
     {
         using var writer = new PdfWriter(output, options);
@@ -119,18 +120,27 @@ internal sealed class LayoutDocument
             catalog[CosNames.AcroForm] = Charta.Signing.PdfSignature.BuildAcroForm(signatureFieldRef);
         }
 
+        var isPdfA = conformance == PdfConformance.PdfA2b;
+        var effectiveMetadata = metadata ?? new DocumentMetadata();
+
         CosReference? infoRef = null;
-        if (metadata is { HasAnyValue: true })
+        if (effectiveMetadata.HasAnyValue || isPdfA)
         {
+            var xmpBytes = XmpWriter.Build(effectiveMetadata, isPdfA ? "2B" : null);
             var xmpRef = writer.Allocate();
-            var xmp = new CosStream(XmpWriter.Build(metadata)) { AllowCompression = false };
+            var xmp = new CosStream(xmpBytes) { AllowCompression = false };
             xmp.Dictionary[CosNames.Type] = CosNames.Metadata;
             xmp.Dictionary[CosNames.Subtype] = CosNames.Xml;
             writer.WriteObject(xmpRef, xmp);
             catalog[CosNames.Metadata] = xmpRef;
 
             infoRef = writer.Allocate();
-            writer.WriteObject(infoRef, BuildInfoDictionary(metadata));
+            writer.WriteObject(infoRef, BuildInfoDictionary(effectiveMetadata));
+        }
+
+        if (isPdfA)
+        {
+            WriteOutputIntent(writer, catalog);
         }
 
         writer.WriteObject(catalogRef, catalog);
@@ -212,6 +222,28 @@ internal sealed class LayoutDocument
             CosNull.Instance,
             new CosReal(top),
             CosNull.Instance);
+
+    /// <summary>Writes the PDF/A sRGB output intent and its embedded ICC profile into the catalog.</summary>
+    private static void WriteOutputIntent(PdfWriter writer, CosDictionary catalog)
+    {
+        var iccRef = writer.Allocate();
+        var icc = new CosStream(Compliance.SrgbIccProfile.Build());
+        icc.Dictionary[CosName.Get("N")] = new CosInteger(3);
+        writer.WriteObject(iccRef, icc);
+
+        var intent = new CosDictionary
+        {
+            [CosNames.Type] = CosNames.OutputIntent,
+            [CosNames.S] = CosNames.GtsPdfA1,
+            [CosNames.OutputConditionIdentifier] = CosString.FromAscii("sRGB"),
+            [CosNames.Info] = CosString.FromAscii("sRGB IEC61966-2.1"),
+            [CosNames.DestOutputProfile] = iccRef,
+        };
+
+        var intentRef = writer.Allocate();
+        writer.WriteObject(intentRef, intent);
+        catalog[CosNames.OutputIntents] = new CosArray(intentRef);
+    }
 
     private static CosDictionary BuildInfoDictionary(DocumentMetadata metadata)
     {
@@ -387,6 +419,7 @@ internal sealed class LayoutDocument
             [CosNames.Rect] = CosArray.OfReals(
                 rect.X, pageHeight - rect.Y - rect.Height, rect.X + rect.Width, pageHeight - rect.Y),
             [CosNames.Border] = CosArray.OfIntegers(0, 0, 0),
+            [CosNames.F] = new CosInteger(4), // Print — required by PDF/A, harmless otherwise
         };
 
         if (annotation.Uri is { } uri)

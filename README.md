@@ -117,6 +117,21 @@ page.Content().Canvas(300, 120, canvas =>
 });
 ```
 
+### PDF/A archival compliance
+
+Target PDF/A-2b for long-term archival — embedded sRGB output intent, pdfaid metadata, embedded
+fonts, validated by the official veraPDF validator in CI:
+
+```csharp
+Document.Create(doc =>
+{
+    doc.Metadata(m => m.Title("Archived report"));
+    doc.Page(page => page.Content().Text("..."));
+}).GeneratePdf("archive.pdf", new PdfSaveOptions { Conformance = PdfConformance.PdfA2b });
+```
+
+Use a font that covers every character you render — PDF/A forbids showing the `.notdef` glyph.
+
 ### Digital signatures
 
 The optional [`Charta.Signing`](https://www.nuget.org/packages/Charta.Signing) add-on signs a

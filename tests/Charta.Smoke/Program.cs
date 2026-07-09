@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Charta;
 using Charta.Cos;
 using Charta.Fonts;
 using Charta.Imaging;
@@ -38,6 +39,18 @@ Emit("layout-sample-compressed.pdf", stream => LayoutSample.Build().Generate(str
 Charta.FontManager.RegisterFont(font);
 Emit("fluent-sample.pdf", stream => FluentSample.Build().Generate(stream, classicUncompressed, Charta.OverflowBehavior.Clip));
 Emit("fluent-sample-compressed.pdf", stream => FluentSample.Build().GeneratePdf(stream), golden: false);
+
+// A PDF/A-2b sample for the veraPDF compliance gate (never golden).
+Emit(
+    "pdfa-sample.pdf",
+    // The synthetic font maps only A/B/C, so the text uses only those — PDF/A forbids showing the
+    // .notdef glyph, which any unmapped character (including a space) would produce.
+    stream => Charta.Document.Create(d =>
+    {
+        d.Metadata(m => m.Title("Charta PDF/A sample").Author("Charta"));
+        d.Page(page => page.Content().Text("CABCABCAB").FontSize(12));
+    }).GeneratePdf(stream, new Charta.PdfSaveOptions { Conformance = Charta.PdfConformance.PdfA2b }),
+    golden: false);
 
 if (MultiScriptSample.Build() is { } multiScript)
 {

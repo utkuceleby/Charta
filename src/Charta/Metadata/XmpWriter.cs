@@ -10,7 +10,13 @@ namespace Charta.Metadata;
 /// </summary>
 internal static class XmpWriter
 {
-    public static byte[] Build(DocumentMetadata metadata)
+    public static byte[] Build(DocumentMetadata metadata) => Build(metadata, pdfAConformance: null);
+
+    /// <summary>
+    /// Builds the XMP packet. When <paramref name="pdfAConformance"/> is set (e.g. "2B"), the pdfaid
+    /// schema is included so validators recognize the PDF/A level.
+    /// </summary>
+    public static byte[] Build(DocumentMetadata metadata, string? pdfAConformance)
     {
         var sb = new StringBuilder();
         sb.Append("<?xpacket begin=\"\uFEFF\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n");
@@ -19,7 +25,16 @@ internal static class XmpWriter
         sb.Append("  <rdf:Description rdf:about=\"\"\n");
         sb.Append("    xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n");
         sb.Append("    xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\"\n");
-        sb.Append("    xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\">\n");
+        sb.Append("    xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\"\n");
+        sb.Append("    xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">\n");
+
+        if (pdfAConformance is not null)
+        {
+            var part = pdfAConformance[..^1];
+            var conformance = pdfAConformance[^1..].ToUpperInvariant();
+            sb.Append("   <pdfaid:part>").Append(part).Append("</pdfaid:part>\n");
+            sb.Append("   <pdfaid:conformance>").Append(conformance).Append("</pdfaid:conformance>\n");
+        }
 
         if (metadata.Title is { } title)
         {

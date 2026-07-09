@@ -58,6 +58,21 @@ jobs:
             qpdf --check "$f"
           done
 
+  pdfa-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Generate documents (incl. PDF/A sample)
+        run: dotnet run --project tests/Charta.Smoke -c Release -- out
+      - name: Validate PDF/A-2b with veraPDF
+        run: |
+          docker run --rm -v "$PWD/out:/pdf:ro" verapdf/cli:latest --flavour 2b /pdf/pdfa-sample.pdf > verapdf.xml || true
+          cat verapdf.xml
+          grep -q 'isCompliant="true"' verapdf.xml || { echo "::error::PDF/A-2b validation failed"; exit 1; }
+
   aot-parity:
     strategy:
       fail-fast: false

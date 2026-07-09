@@ -25,6 +25,9 @@ for f in /tmp/out/*.pdf; do
   qpdf --check "$f" > /dev/null
 done
 
+echo "== PDF/A-2b sample generated (validate with veraPDF; see the pdfa-check CI job) =="
+[ -f /tmp/out/pdfa-sample.pdf ] && echo "pdfa-sample.pdf present"
+
 echo "== NativeAOT parity =="
 dotnet publish tests/Charta.Smoke -c Release -r linux-x64 -o /tmp/aot
 /tmp/aot/Charta.Smoke /tmp/aot-out > /tmp/aot.txt

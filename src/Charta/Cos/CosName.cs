@@ -154,4 +154,9 @@ internal static class CosNames
     public static readonly CosName N = CosName.Get("N");
     public static readonly CosName P = CosName.Get("P");
     public static readonly CosName F = CosName.Get("F");
+    public static readonly CosName OutputIntents = CosName.Get("OutputIntents");
+    public static readonly CosName OutputIntent = CosName.Get("OutputIntent");
+    public static readonly CosName GtsPdfA1 = CosName.Get("GTS_PDFA1");
+    public static readonly CosName OutputConditionIdentifier = CosName.Get("OutputConditionIdentifier");
+    public static readonly CosName DestOutputProfile = CosName.Get("DestOutputProfile");
 }
