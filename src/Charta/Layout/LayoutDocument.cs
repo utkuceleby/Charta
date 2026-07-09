@@ -60,6 +60,7 @@ internal sealed class LayoutDocument
         PdfWriterOptions? options = null,
         DocumentMetadata? metadata = null,
         Charta.Signing.SigningRequest? signing = null,
+        bool debugOverflow = false,
         CancellationToken cancellationToken = default)
     {
         using var writer = new PdfWriter(output, options);
@@ -79,7 +80,7 @@ internal sealed class LayoutDocument
 
         foreach (var section in sections)
         {
-            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation, signatureFieldRef, cancellationToken);
+            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation, signatureFieldRef, debugOverflow, cancellationToken);
             if (pageRefs.Count >= MaxPages)
             {
                 break;
@@ -267,6 +268,7 @@ internal sealed class LayoutDocument
         OverflowBehavior overflowBehavior,
         NavigationCollector navigation,
         CosReference? signatureFieldRef,
+        bool debugOverflow,
         CancellationToken cancellationToken)
     {
         var contentBox = new LayoutRect(
@@ -279,7 +281,7 @@ internal sealed class LayoutDocument
         {
             cancellationToken.ThrowIfCancellationRequested();
             var pageNumber = pageRefs.Count + 1;
-            var context = new DrawingContext(resources, section.PageSize.Height, pageNumber, overflowBehavior, diagnostics, navigation);
+            var context = new DrawingContext(resources, section.PageSize.Height, pageNumber, overflowBehavior, diagnostics, navigation, debugOverflow);
 
             // Header and footer carve their heights out of this page's body box.
             var bodyTop = contentBox.Y;
@@ -422,6 +424,10 @@ internal sealed class LayoutDocument
             context.AddDiagnostic(role, $"{role} content does not fit its band on page {context.PageNumber}; it was clipped.");
             var captured = bounds;
             context.Clipped(bounds, () => element.Draw(context, captured));
+            if (context.DebugOverflow)
+            {
+                context.DrawOverflowMarker(bounds);
+            }
         }
         else
         {

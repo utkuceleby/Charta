@@ -201,6 +201,7 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
     private bool _italic;
     private bool _underline;
     private bool _strikethrough;
+    private double _letterSpacing;
     private TextAlignment _alignment = TextAlignment.Left;
 
     public ITextDescriptor FontFamily(string family)
@@ -251,6 +252,12 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
         return this;
     }
 
+    public ITextDescriptor LetterSpacing(double points)
+    {
+        _letterSpacing = points;
+        return this;
+    }
+
     public ITextDescriptor AlignLeft()
     {
         _alignment = TextAlignment.Left;
@@ -286,6 +293,7 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
                 LineSpacing = _lineSpacing,
                 Underline = _underline,
                 Strikethrough = _strikethrough,
+                LetterSpacing = _letterSpacing,
             },
             _alignment);
 }
@@ -316,6 +324,10 @@ internal sealed class TextSpanDescriptor : ITextSpanDescriptor
     public bool IsUnderline { get; private set; }
 
     public bool IsStrikethrough { get; private set; }
+
+    public double Tracking { get; private set; }
+
+    public int Script { get; private set; } // 0 = baseline, 1 = superscript, -1 = subscript
 
     public ITextSpanDescriptor FontFamily(string family)
     {
@@ -356,6 +368,24 @@ internal sealed class TextSpanDescriptor : ITextSpanDescriptor
     public ITextSpanDescriptor Strikethrough()
     {
         IsStrikethrough = true;
+        return this;
+    }
+
+    public ITextSpanDescriptor LetterSpacing(double points)
+    {
+        Tracking = points;
+        return this;
+    }
+
+    public ITextSpanDescriptor Superscript()
+    {
+        Script = 1;
+        return this;
+    }
+
+    public ITextSpanDescriptor Subscript()
+    {
+        Script = -1;
         return this;
     }
 }
@@ -413,14 +443,25 @@ internal sealed class TextContentDescriptor : ITextContentDescriptor
                 _ => span.Text,
             };
 
+            // Super/subscript shrink the glyphs and shift the baseline.
+            var size = span.Script == 0 ? span.Size : span.Size * 0.65;
+            var baselineShift = span.Script switch
+            {
+                1 => span.Size * 0.34,
+                -1 => -span.Size * 0.14,
+                _ => 0.0,
+            };
+
             spans.Add(new StyledSpan(text, new TextStyle
             {
                 Fonts = context.ResolveFonts(span.Family, span.IsBold, span.IsItalic),
-                FontSize = span.Size,
+                FontSize = size,
                 Color = span.TextColor.ToLayout(),
                 LineSpacing = _lineSpacing,
                 Underline = span.IsUnderline,
                 Strikethrough = span.IsStrikethrough,
+                LetterSpacing = span.Tracking,
+                BaselineShift = baselineShift,
             }));
         }
 

@@ -106,6 +106,11 @@ internal sealed class ColumnElement(IReadOnlyList<Element> children, double spac
                     var captured = element;
                     var capturedBounds = new LayoutRect(clipBounds.X, clipBounds.Y, child.Size.Width, child.Size.Height);
                     context.Clipped(clipBounds, () => captured.Draw(context, capturedBounds));
+                    if (context.DebugOverflow)
+                    {
+                        context.DrawOverflowMarker(clipBounds);
+                    }
+
                     _index++;
                     return; // the clip consumed the rest of the page
 

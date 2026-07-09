@@ -83,6 +83,12 @@ public sealed class PdfSaveOptions
 
     /// <summary>Overflow policy. Default: clip with diagnostics.</summary>
     public OverflowBehavior Overflow { get; init; } = OverflowBehavior.Clip;
+
+    /// <summary>
+    /// When true, clipped overflow regions are marked with a red overlay in the output — a visual aid
+    /// for finding layout problems during development. Off in production.
+    /// </summary>
+    public bool DebugLayout { get; init; }
 }
 
 /// <summary>Thrown only under <see cref="OverflowBehavior.Throw"/>; carries the diagnostic that would have been recorded.</summary>

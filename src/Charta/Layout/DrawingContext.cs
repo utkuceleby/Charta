@@ -33,7 +33,8 @@ internal sealed class DrawingContext
         int pageNumber,
         OverflowBehavior overflowBehavior,
         List<LayoutDiagnostic> diagnostics,
-        NavigationCollector? navigation = null)
+        NavigationCollector? navigation = null,
+        bool debugOverflow = false)
     {
         Resources = resources;
         _pageHeight = pageHeight;
@@ -41,6 +42,7 @@ internal sealed class DrawingContext
         OverflowBehavior = overflowBehavior;
         _diagnostics = diagnostics;
         _navigation = navigation ?? new NavigationCollector();
+        DebugOverflow = debugOverflow;
     }
 
     public void AddAnnotation(PageAnnotation annotation) => Annotations.Add(annotation);
@@ -72,15 +74,46 @@ internal sealed class DrawingContext
     }
 
     /// <summary>Draws one shaped run at a baseline position (top-left-origin baseline Y).</summary>
-    public void DrawText(PdfFont font, ShapedText text, double x, double baselineY, double fontSize, LayoutColor color)
+    public void DrawText(
+        PdfFont font,
+        ShapedText text,
+        double x,
+        double baselineY,
+        double fontSize,
+        LayoutColor color,
+        double letterSpacing = 0)
     {
         var name = Resources.GetFontName(font);
         Append("BT");
         Append($"{F(color.R)} {F(color.G)} {F(color.B)} rg");
         Append($"/{name} {F(fontSize)} Tf");
+        if (letterSpacing != 0)
+        {
+            Append($"{F(letterSpacing)} Tc"); // character spacing applies per glyph in composite fonts
+        }
+
         Append($"{F(x)} {F(_pageHeight - baselineY)} Td");
         Append(text.ToTextOperator(fontSize));
+        if (letterSpacing != 0)
+        {
+            Append("0 Tc"); // reset so the shared text state does not leak into the next run
+        }
+
         Append("ET");
+    }
+
+    /// <summary>Whether overflow debugging overlays are drawn (opt-in via PdfSaveOptions).</summary>
+    public bool DebugOverflow { get; init; }
+
+    /// <summary>Draws a red overflow marker — a border and a diagonal cross — over a clipped region.</summary>
+    public void DrawOverflowMarker(in LayoutRect rect)
+    {
+        var red = new LayoutColor(0.85, 0.1, 0.1);
+        StrokeRect(rect, red, 1);
+        Append($"{F(red.R)} {F(red.G)} {F(red.B)} RG");
+        Append("0.5 w");
+        Append($"{F(rect.X)} {F(PdfY(rect))} m {F(rect.X + rect.Width)} {F(PdfY(rect) + rect.Height)} l S");
+        Append($"{F(rect.X)} {F(PdfY(rect) + rect.Height)} m {F(rect.X + rect.Width)} {F(PdfY(rect))} l S");
     }
 
     public void DrawImage(PdfImage image, in LayoutRect rect)

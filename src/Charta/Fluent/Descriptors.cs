@@ -111,6 +111,9 @@ public interface ITextDescriptor
     /// <summary>Strikes through the text.</summary>
     ITextDescriptor Strikethrough();
 
+    /// <summary>Extra space between letters (tracking), in points.</summary>
+    ITextDescriptor LetterSpacing(double points);
+
     /// <summary>Left-aligns the lines (default).</summary>
     ITextDescriptor AlignLeft();
 
@@ -147,6 +150,15 @@ public interface ITextSpanDescriptor
 
     /// <summary>Strikes through the span.</summary>
     ITextSpanDescriptor Strikethrough();
+
+    /// <summary>Extra space between letters (tracking), in points.</summary>
+    ITextSpanDescriptor LetterSpacing(double points);
+
+    /// <summary>Renders the span smaller and raised (e.g. exponents, ordinals).</summary>
+    ITextSpanDescriptor Superscript();
+
+    /// <summary>Renders the span smaller and lowered (e.g. chemical subscripts).</summary>
+    ITextSpanDescriptor Subscript();
 }
 
 /// <summary>A rich text block: multiple styled spans flowing as one paragraph stream.</summary>

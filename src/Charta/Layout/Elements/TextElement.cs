@@ -29,6 +29,12 @@ internal sealed class TextStyle
     public bool Underline { get; init; }
 
     public bool Strikethrough { get; init; }
+
+    /// <summary>Extra space between glyphs, in points (letter-spacing / tracking).</summary>
+    public double LetterSpacing { get; init; }
+
+    /// <summary>Baseline shift in points (positive raises the run — superscript; negative lowers it).</summary>
+    public double BaselineShift { get; init; }
 }
 
 /// <summary>One styled fragment of a paragraph.</summary>
@@ -165,24 +171,29 @@ internal sealed class TextElement : Element
         var baseline = y + line.Ascent;
         foreach (var run in runs)
         {
-            var runWidth = run.Text.Width * run.Style.FontSize / 1000;
-            context.DrawText(run.Font, run.Text, x, baseline, run.Style.FontSize, run.Style.Color);
+            var runWidth = RunWidth(run);
+            var runBaseline = baseline - run.Style.BaselineShift;
+            context.DrawText(run.Font, run.Text, x, runBaseline, run.Style.FontSize, run.Style.Color, run.Style.LetterSpacing);
 
             if (run.Style.Underline)
             {
                 var thickness = run.Style.FontSize * 0.06;
-                context.FillRect(new LayoutRect(x, baseline + run.Style.FontSize * 0.08, runWidth, thickness), run.Style.Color);
+                context.FillRect(new LayoutRect(x, runBaseline + run.Style.FontSize * 0.08, runWidth, thickness), run.Style.Color);
             }
 
             if (run.Style.Strikethrough)
             {
                 var thickness = run.Style.FontSize * 0.06;
-                context.FillRect(new LayoutRect(x, baseline - run.Style.FontSize * 0.30, runWidth, thickness), run.Style.Color);
+                context.FillRect(new LayoutRect(x, runBaseline - run.Style.FontSize * 0.30, runWidth, thickness), run.Style.Color);
             }
 
             x += runWidth;
         }
     }
+
+    /// <summary>Rendered width of a run: shaped advance plus letter-spacing after each glyph.</summary>
+    private static double RunWidth(StyledRun run) =>
+        run.Text.Width * run.Style.FontSize / 1000 + run.Style.LetterSpacing * run.Text.Glyphs.Count;
 
     /// <summary>Distributes the missing width across the line's space glyphs.</summary>
     private static (IReadOnlyList<StyledRun> Runs, double Width) JustifyRuns(TextLine line, double targetWidth)
@@ -287,7 +298,7 @@ internal sealed class TextElement : Element
         {
             foreach (var run in style.Fonts.Shape(span[sliceStart..sliceEnd]))
             {
-                width += run.Text.Width * style.FontSize / 1000;
+                width += run.Text.Width * style.FontSize / 1000 + style.LetterSpacing * run.Text.Glyphs.Count;
             }
         }
 
@@ -300,7 +311,6 @@ internal sealed class TextElement : Element
         EnsureBidi();
 
         var runs = new List<StyledRun>();
-        var width = 0.0;
         var ascent = 0.0;
         var height = 0.0;
 
@@ -309,7 +319,6 @@ internal sealed class TextElement : Element
             foreach (var (font, shaped, style) in VisualRuns(start, end))
             {
                 runs.Add(new StyledRun(font, shaped, style));
-                width += shaped.Width * style.FontSize / 1000;
             }
         }
         else
@@ -319,10 +328,11 @@ internal sealed class TextElement : Element
                 foreach (var fontRun in style.Fonts.Shape(span[sliceStart..sliceEnd]))
                 {
                     runs.Add(new StyledRun(fontRun.Font, fontRun.Text, style));
-                    width += fontRun.Text.Width * style.FontSize / 1000;
                 }
             }
         }
+
+        var width = runs.Sum(RunWidth);
 
         // Line metrics: tallest span wins. Empty lines use the first span's style.
         var metricStyles = runs.Count > 0

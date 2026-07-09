@@ -5,6 +5,14 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.4.0]
+
+### Added
+
+- Text polish: letter-spacing (tracking) on text and spans, superscript and subscript spans (shrunk
+  and baseline-shifted), and `PdfSaveOptions.DebugLayout` — a development aid that marks clipped
+  overflow regions with a red overlay in the output.
+
 ## [1.3.0]
 
 ### Added

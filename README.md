@@ -150,7 +150,11 @@ macOS font folders — no native calls).
 Charta never throws for layout problems. Content that cannot fit even a full page is clipped and
 reported in `result.Diagnostics` with what/where/why; treat a non-empty list as a warning in
 development and log it in production. Prefer exceptions in CI? Opt in with
-`new PdfSaveOptions { Overflow = OverflowBehavior.Throw }`.
+`new PdfSaveOptions { Overflow = OverflowBehavior.Throw }`. To *see* where content was clipped, turn
+on `new PdfSaveOptions { DebugLayout = true }` — clipped regions get a red overlay in the output.
+
+Text supports letter-spacing (`.LetterSpacing(2)`), and rich-text spans support `.Superscript()` /
+`.Subscript()`, underline, and strikethrough.
 
 ## Design principles
 

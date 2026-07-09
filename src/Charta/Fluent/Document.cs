@@ -51,6 +51,7 @@ public sealed class Document
             output,
             new PdfWriterOptions { CompressStreams = options?.Compress ?? true },
             options?.Overflow ?? OverflowBehavior.Clip,
+            debugOverflow: options?.DebugLayout ?? false,
             cancellationToken: cancellationToken);
     }
 
@@ -84,7 +85,8 @@ public sealed class Document
             new PdfWriterOptions { CompressStreams = options?.Compress ?? true },
             options?.Overflow ?? OverflowBehavior.Clip,
             new Charta.Signing.SigningRequest(signer, info ?? new SignatureInfo()),
-            cancellationToken);
+            debugOverflow: options?.DebugLayout ?? false,
+            cancellationToken: cancellationToken);
 
         var bytes = buffer.ToArray();
         Charta.Signing.PdfSignature.PatchSignature(bytes, signer);
@@ -111,6 +113,7 @@ public sealed class Document
         PdfWriterOptions writerOptions,
         OverflowBehavior overflow,
         Charta.Signing.SigningRequest? signing = null,
+        bool debugOverflow = false,
         CancellationToken cancellationToken = default)
     {
         var descriptor = new DocumentDescriptor();
@@ -137,6 +140,6 @@ public sealed class Document
 
         var context = new BuildContext { TotalPages = totalPages };
         var sections = descriptor.Pages.Select(page => page.Build(context)).ToList();
-        return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata, signing, cancellationToken);
+        return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata, signing, debugOverflow, cancellationToken);
     }
 }

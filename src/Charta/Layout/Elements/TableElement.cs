@@ -175,6 +175,11 @@ internal sealed class TableElement : Element
                 var bandY = y;
                 var x = bounds.X;
                 context.Clipped(clipRect, () => DrawBand(context, bandIndex, x, bandY));
+                if (context.DebugOverflow)
+                {
+                    context.DrawOverflowMarker(clipRect);
+                }
+
                 _nextBand++;
             }
 
