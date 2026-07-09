@@ -180,4 +180,4 @@ Text supports letter-spacing (`.LetterSpacing(2)`), and rich-text spans support 
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) © [Utku Çelebi](https://utkucelebi.com.tr)
