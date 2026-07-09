@@ -15,6 +15,8 @@ internal sealed class PdfFont
     private readonly SfntFont _font;
     private readonly SortedSet<ushort> _usedGlyphs = [0];
     private readonly SortedDictionary<ushort, string> _glyphText = [];
+    private GposKerning? _kerning;
+    private bool _kerningResolved;
     private bool _written;
 
     private PdfFont(SfntFont font) => _font = font;
@@ -24,9 +26,12 @@ internal sealed class PdfFont
 
     public int UnitsPerEm => _font.UnitsPerEm;
 
+    /// <summary>True when the font's cmap covers the codepoint (used by fallback chains).</summary>
+    public bool CanMap(int codepoint) => _font.MapCodepoint(codepoint) != 0;
+
     /// <summary>
-    /// Simple shaping: one glyph per codepoint via cmap, advances from hmtx. No substitution,
-    /// positioning, or bidi — those arrive with the shaping layer. Records glyph usage for subsetting.
+    /// Simple shaping: one glyph per codepoint via cmap, advances from hmtx, pair kerning from GPOS.
+    /// No substitution or bidi — those arrive with the shaping layer. Records glyph usage for subsetting.
     /// </summary>
     public ShapedText Shape(string text)
     {
@@ -35,12 +40,28 @@ internal sealed class PdfFont
             throw new InvalidOperationException("The font has already been written; no further text can be shaped with it.");
         }
 
-        var glyphs = new List<ushort>(text.Length);
+        if (!_kerningResolved)
+        {
+            _kerning = GposKerning.TryCreate(_font);
+            _kerningResolved = true;
+        }
+
+        var glyphs = new List<ShapedGlyph>(text.Length);
         long widthFontUnits = 0;
         foreach (var rune in text.EnumerateRunes())
         {
             var gid = _font.MapCodepoint(rune.Value);
-            glyphs.Add(gid);
+            if (glyphs.Count > 0 && _kerning is not null)
+            {
+                var kern = _kerning.GetAdjustment(glyphs[^1].GlyphId, gid);
+                if (kern != 0)
+                {
+                    glyphs[^1] = glyphs[^1] with { KernAfter = kern };
+                    widthFontUnits += kern;
+                }
+            }
+
+            glyphs.Add(new ShapedGlyph(gid, 0));
             widthFontUnits += _font.AdvanceWidth(gid);
             _usedGlyphs.Add(gid);
             if (gid != 0)
@@ -49,7 +70,7 @@ internal sealed class PdfFont
             }
         }
 
-        return new ShapedText([.. glyphs], widthFontUnits * 1000.0 / _font.UnitsPerEm);
+        return new ShapedText(glyphs, widthFontUnits * 1000.0 / _font.UnitsPerEm, _font.UnitsPerEm);
     }
 
     /// <summary>Writes the full font object graph; <paramref name="fontReference"/> becomes the Type0 font.</summary>
@@ -168,24 +189,64 @@ internal sealed class PdfFont
     private static int EstimateStemV(ushort weightClass) => 10 + 220 * (Math.Clamp(weightClass, (ushort)100, (ushort)900) - 50) / 900;
 }
 
-/// <summary>Result of shaping a text run: glyph IDs in visual order and the total advance in 1/1000 em.</summary>
-internal sealed class ShapedText(ushort[] glyphIds, double width)
+/// <summary>One positioned glyph: its ID and the kerning adjustment (font units) applied after it.</summary>
+internal readonly record struct ShapedGlyph(ushort GlyphId, int KernAfter);
+
+/// <summary>Result of shaping a text run: glyphs in visual order and the total advance in 1/1000 em.</summary>
+internal sealed class ShapedText(IReadOnlyList<ShapedGlyph> glyphs, double width, int unitsPerEm)
 {
-    public IReadOnlyList<ushort> GlyphIds { get; } = glyphIds;
+    public IReadOnlyList<ShapedGlyph> Glyphs { get; } = glyphs;
 
     public double Width { get; } = width;
 
-    /// <summary>Identity-H character codes as a PDF hex string, e.g. &lt;0001 0002&gt; without spaces.</summary>
+    /// <summary>Identity-H character codes as a PDF hex string, e.g. &lt;00010002&gt;.</summary>
     public string ToHexString()
     {
-        var sb = new StringBuilder(GlyphIds.Count * 4 + 2);
+        var sb = new StringBuilder(Glyphs.Count * 4 + 2);
         sb.Append('<');
-        foreach (var gid in GlyphIds)
+        foreach (var glyph in Glyphs)
         {
-            sb.Append(gid.ToString("X4", CultureInfo.InvariantCulture));
+            sb.Append(glyph.GlyphId.ToString("X4", CultureInfo.InvariantCulture));
         }
 
         sb.Append('>');
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// The text-showing operator: plain Tj when unkerned, otherwise a TJ array whose numbers are the
+    /// kerning adjustments in thousandths of an em (TJ subtracts, so the sign flips).
+    /// </summary>
+    public string ToTextOperator()
+    {
+        var kerned = false;
+        foreach (var glyph in Glyphs)
+        {
+            if (glyph.KernAfter != 0)
+            {
+                kerned = true;
+                break;
+            }
+        }
+
+        if (!kerned)
+        {
+            return ToHexString() + " Tj";
+        }
+
+        var sb = new StringBuilder(Glyphs.Count * 5 + 8);
+        sb.Append("[<");
+        foreach (var glyph in Glyphs)
+        {
+            sb.Append(glyph.GlyphId.ToString("X4", CultureInfo.InvariantCulture));
+            if (glyph.KernAfter != 0)
+            {
+                var adjustment = (int)Math.Round(-glyph.KernAfter * 1000.0 / unitsPerEm);
+                sb.Append("> ").Append(adjustment.ToString(CultureInfo.InvariantCulture)).Append(" <");
+            }
+        }
+
+        sb.Append(">] TJ");
         return sb.ToString();
     }
 }

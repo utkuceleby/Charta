@@ -7,14 +7,18 @@ namespace Charta.Smoke;
 /// <summary>
 /// Builds a tiny, fully valid TrueType font entirely in code so font tests are deterministic and
 /// carry no licensing baggage. Layout: 4 glyphs, unitsPerEm 1000, PostScript name "ChartaTest".
-///   gid 0  .notdef   empty outline, advance 500
-///   gid 1  'A'       triangle contour, advance 600
-///   gid 2  'B'       square contour, advance 600
-///   gid 3  'C'       composite glyph referencing gid 1, advance 600
+///   gid 0  .notdef      empty outline, advance 500
+///   gid 1  firstChar    triangle contour, advance 600
+///   gid 2  firstChar+1  square contour, advance 600
+///   gid 3  firstChar+2  composite glyph referencing gid 1, advance 600
+/// The GPOS table kerns the pair (gid 1, gid 2) by -40 font units (a realistic magnitude — text
+/// extractors interpret oversized kerns as word breaks).
+/// <paramref name="firstChar"/> defaults to 'A' (mapping A/B/C); other values let fallback-chain
+/// tests build fonts with disjoint coverage.
 /// </summary>
 internal static class SyntheticFont
 {
-    public static byte[] Build()
+    public static byte[] Build(char firstChar = 'A')
     {
         var glyf = BuildGlyf(out var locaOffsets);
 
@@ -30,11 +34,12 @@ internal static class SyntheticFont
             ("hhea", BuildHhea()),
             ("maxp", BuildMaxp()),
             ("hmtx", BuildHmtx()),
-            ("cmap", BuildCmap()),
+            ("cmap", BuildCmap(firstChar)),
             ("loca", loca.ToArray()),
             ("glyf", glyf),
             ("name", BuildName()),
             ("post", BuildPost()),
+            ("GPOS", BuildGpos()),
         ]);
     }
 
@@ -129,19 +134,20 @@ internal static class SyntheticFont
         .U16(600).S16(50)
         .ToArray();
 
-    private static byte[] BuildCmap()
+    private static byte[] BuildCmap(char firstChar)
     {
-        // Format 4, one Windows (3,1) subtable: 0x41..0x43 → gids 1..3.
+        // Format 4, one Windows (3,1) subtable: firstChar..firstChar+2 → gids 1..3.
+        var first = (ushort)firstChar;
         var subtable = new BigEndianBuilder()
             .U16(4)            // format
             .U16(32)           // length
             .U16(0)            // language
             .U16(4)            // segCountX2
             .U16(4).U16(1).U16(0) // searchRange, entrySelector, rangeShift
-            .U16(0x43).U16(0xFFFF) // endCode
+            .U16(first + 2).U16(0xFFFF) // endCode
             .U16(0)            // reservedPad
-            .U16(0x41).U16(0xFFFF) // startCode
-            .S16(1 - 0x41).S16(1)  // idDelta
+            .U16(first).U16(0xFFFF) // startCode
+            .S16(1 - first).S16(1)  // idDelta
             .U16(0).U16(0)     // idRangeOffset
             .ToArray();
 
@@ -179,6 +185,39 @@ internal static class SyntheticFont
         .S16(0).S16(0)     // underlinePosition, underlineThickness
         .U32(0)            // isFixedPitch
         .U32(0).U32(0).U32(0).U32(0) // memory hints
+        .ToArray();
+
+    /// <summary>GPOS with one 'kern' feature: PairPos format 1 kerning (gid 1, gid 2) by -40.</summary>
+    private static byte[] BuildGpos() => new BigEndianBuilder()
+        .U32(0x00010000)   // version
+        .U16(10)           // scriptListOffset
+        .U16(12)           // featureListOffset
+        .U16(26)           // lookupListOffset
+        .U16(0)            // 10: ScriptList, count 0
+        .U16(1)            // 12: FeatureList, count 1
+        .U32(0x6B65726E)   // tag 'kern'
+        .U16(8)            // feature offset (relative to FeatureList → 20)
+        .U16(0)            // 20: featureParams
+        .U16(1)            // lookupIndexCount
+        .U16(0)            // lookup index 0
+        .U16(1)            // 26: LookupList, count 1
+        .U16(4)            // lookup offset (relative → 30)
+        .U16(2)            // 30: lookupType = pair adjustment
+        .U16(0)            // lookupFlag
+        .U16(1)            // subTableCount
+        .U16(8)            // subtable offset (relative → 38)
+        .U16(1)            // 38: posFormat 1
+        .U16(18)           // coverageOffset (relative → 56)
+        .U16(0x0004)       // valueFormat1: XAdvance
+        .U16(0)            // valueFormat2
+        .U16(1)            // pairSetCount
+        .U16(12)           // pairSetOffset (relative → 50)
+        .U16(1)            // 50: pairValueCount
+        .U16(2)            // secondGlyph = gid 2
+        .S16(-40)          // XAdvance adjustment
+        .U16(1)            // 56: coverage format 1
+        .U16(1)            // glyphCount
+        .U16(1)            // gid 1
         .ToArray();
 }
 

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Charta.Cos;
 using Charta.Fonts;
+using Charta.Imaging;
 using Charta.Smoke;
 
 // AOT/JIT parity smoke tool: writes the scaffolding documents and prints their SHA-256 hashes.
@@ -21,6 +22,15 @@ Emit("hello-compressed.pdf", stream => HelloPdf.Write(stream, streamCompressed),
 var font = SyntheticFont.Build();
 Emit("font-sample.pdf", stream => FontSampleDocument.Write(stream, font, "CAB", classicUncompressed));
 Emit("font-sample-compressed.pdf", stream => FontSampleDocument.Write(stream, font, "CAB", streamCompressed), golden: false);
+
+// 2x2 RGBA PNG (red, semi-green / blue, translucent white) — exercises decode, SMask, and placement.
+byte[] rgbaPixels =
+[
+    255, 0, 0, 255, 0, 255, 0, 128,
+    0, 0, 255, 255, 255, 255, 255, 64,
+];
+var png = PngFixtures.Build(2, 2, 8, colorType: 6, rgbaPixels, filterType: 4);
+Emit("image-sample.pdf", stream => ImageSampleDocument.Write(stream, png, classicUncompressed));
 
 // Optional second argument: a real font file to exercise the pipeline with (system-dependent, never golden).
 if (args.Length > 1)

@@ -10,6 +10,27 @@ namespace Charta.Tests.Cos;
 /// </summary>
 public class GoldenTests
 {
+    [Fact]
+    public void ImageSample_MatchesGoldenBytes()
+    {
+        byte[] rgbaPixels =
+        [
+            255, 0, 0, 255, 0, 255, 0, 128,
+            0, 0, 255, 255, 255, 255, 255, 64,
+        ];
+        var png = Charta.Smoke.PngFixtures.Build(2, 2, 8, colorType: 6, rgbaPixels, filterType: 4);
+        using var buffer = new MemoryStream();
+        Charta.Imaging.ImageSampleDocument.Write(buffer, png, new PdfWriterOptions
+        {
+            XrefMode = XrefMode.Classic,
+            CompressStreams = false,
+        });
+
+        var expected = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Golden", "image-sample.pdf"));
+
+        Assert.Equal(expected, buffer.ToArray());
+    }
+
     [Theory]
     [InlineData(true, "hello-classic.pdf")]
     [InlineData(false, "hello-xrefstream.pdf")]

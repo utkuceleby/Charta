@@ -1,7 +1,6 @@
 using System.IO.Compression;
-using Charta.Smoke;
 
-namespace Charta.Tests.Imaging;
+namespace Charta.Smoke;
 
 /// <summary>
 /// Builds PNG files in code (like <see cref="SyntheticFont"/> for fonts). The decoder ignores CRCs,

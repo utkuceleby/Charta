@@ -1,4 +1,5 @@
 using Charta.Imaging;
+using Charta.Smoke;
 using Xunit;
 
 namespace Charta.Tests.Imaging;

@@ -28,8 +28,8 @@ public class PdfFontTests
 
         var shaped = font.Shape("CAB");
 
-        Assert.Equal(new ushort[] { 3, 1, 2 }, shaped.GlyphIds);
-        Assert.Equal(1800, shaped.Width); // 3 × 600 font units at unitsPerEm 1000
+        Assert.Equal(new ushort[] { 3, 1, 2 }, shaped.Glyphs.Select(g => g.GlyphId));
+        Assert.Equal(1760, shaped.Width); // 3 × 600 minus the 40-unit A→B kern
         Assert.Equal("<000300010002>", shaped.ToHexString());
     }
 
@@ -40,7 +40,7 @@ public class PdfFontTests
 
         var shaped = font.Shape("AZ");
 
-        Assert.Equal(new ushort[] { 1, 0 }, shaped.GlyphIds);
+        Assert.Equal(new ushort[] { 1, 0 }, shaped.Glyphs.Select(g => g.GlyphId));
     }
 
     [Fact]
