@@ -1,5 +1,10 @@
 # Charta
 
+[![NuGet](https://img.shields.io/nuget/v/Charta.svg?logo=nuget)](https://www.nuget.org/packages/Charta)
+[![Downloads](https://img.shields.io/nuget/dt/Charta.svg?logo=nuget)](https://www.nuget.org/packages/Charta)
+[![CI](https://github.com/utkuceleby/Charta/actions/workflows/ci.yml/badge.svg)](https://github.com/utkuceleby/Charta/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A permanently-MIT PDF generation library for .NET — fluent layout API, zero native dependencies, streaming output, NativeAOT-ready.
 
 **Why Charta?** Every free .NET PDF option forces a trade-off: the modern fluent engine is revenue-gated, the permissive veteran has no layout engine or text shaping, the feature king is AGPL. Charta is MIT forever — no revenue thresholds, no dual-license switch — with a 166KB package that depends on nothing but the BCL.
