@@ -124,9 +124,9 @@ public class MultiScriptTests
     [Fact]
     public void ComplexScripts_AreDetected()
     {
-        Assert.True(ScriptSupport.ContainsComplexScript("مرحبا بالعالم"));   // Arabic
-        Assert.True(ScriptSupport.ContainsComplexScript("שלום עולם"));        // Hebrew
+        Assert.True(ScriptSupport.ContainsComplexScript("مرحبا بالعالم"));   // Arabic: joining pending
         Assert.True(ScriptSupport.ContainsComplexScript("नमस्ते दुनिया"));       // Devanagari
+        Assert.False(ScriptSupport.ContainsComplexScript("שלום עולם"));       // Hebrew: bidi suffices
         Assert.False(ScriptSupport.ContainsComplexScript("İstanbul ğüşöç"));
         Assert.False(ScriptSupport.ContainsComplexScript("Привет мир"));
         Assert.False(ScriptSupport.ContainsComplexScript("Γειά σου"));

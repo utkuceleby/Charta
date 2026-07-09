@@ -59,6 +59,15 @@ internal sealed class TextElement : Element
     private int _nextLine;
     private bool _complexScriptReported;
 
+    // Bidi state, computed once (width-independent). Null when the text is purely left-to-right,
+    // which keeps the fast path byte-identical to the pre-bidi implementation.
+    private bool _bidiComputed;
+    private int[] _codepoints = [];
+    private int[] _charToCodepoint = [];   // length = chars + 1
+    private byte[] _bidiLevels = [];
+    private int[] _charStyleIndex = [];    // style span index per char
+    private bool _hasRtl;
+
     public TextElement(string text, TextStyle style, TextAlignment alignment = TextAlignment.Left)
         : this([new StyledSpan(text, style)], alignment)
     {
@@ -113,10 +122,9 @@ internal sealed class TextElement : Element
             _complexScriptReported = true;
             context.AddDiagnostic(
                 nameof(TextElement),
-                "The text contains a script that needs complex shaping or right-to-left layout " +
-                "(Arabic, Hebrew, Indic, …). Without the shaping add-on it renders unjoined and " +
-                "without bidi reordering — both the visual output and text extraction will be " +
-                "incorrect for this run.");
+                "The text contains a script that needs glyph shaping (Arabic, Indic, …). Reading " +
+                "order is handled (UAX#9 bidi), but letterforms render unjoined until the shaping " +
+                "add-on is available.");
         }
 
         var lines = BuildLines(bounds.Width);
@@ -287,18 +295,33 @@ internal sealed class TextElement : Element
     private TextLine ShapeLine(int start, int end, bool endsParagraph)
     {
         end = TrimEnd(start, end, trimSpaces: true);
+        EnsureBidi();
 
         var runs = new List<StyledRun>();
         var width = 0.0;
         var ascent = 0.0;
         var height = 0.0;
 
-        foreach (var (span, style, sliceStart, sliceEnd) in Slices(start, end))
+        if (_hasRtl)
         {
-            foreach (var fontRun in style.Fonts.Shape(span[sliceStart..sliceEnd]))
+            foreach (var (text, style) in VisualGroups(start, end))
             {
-                runs.Add(new StyledRun(fontRun.Font, fontRun.Text, style));
-                width += fontRun.Text.Width * style.FontSize / 1000;
+                foreach (var fontRun in style.Fonts.Shape(text))
+                {
+                    runs.Add(new StyledRun(fontRun.Font, fontRun.Text, style));
+                    width += fontRun.Text.Width * style.FontSize / 1000;
+                }
+            }
+        }
+        else
+        {
+            foreach (var (span, style, sliceStart, sliceEnd) in Slices(start, end))
+            {
+                foreach (var fontRun in style.Fonts.Shape(span[sliceStart..sliceEnd]))
+                {
+                    runs.Add(new StyledRun(fontRun.Font, fontRun.Text, style));
+                    width += fontRun.Text.Width * style.FontSize / 1000;
+                }
             }
         }
 
@@ -314,6 +337,175 @@ internal sealed class TextElement : Element
         }
 
         return new TextLine(runs, width, ascent, height, endsParagraph);
+    }
+
+    // ---------------------------------------------------------------- bidi (UAX#9)
+
+    /// <summary>Computes codepoints, per-paragraph bidi levels, and per-char style indices — once.</summary>
+    private void EnsureBidi()
+    {
+        if (_bidiComputed)
+        {
+            return;
+        }
+
+        _bidiComputed = true;
+
+        var codepoints = new List<int>(_fullText.Length);
+        var charToCp = new int[_fullText.Length + 1];
+        var charIndex = 0;
+        foreach (var rune in _fullText.EnumerateRunes())
+        {
+            for (var i = 0; i < rune.Utf16SequenceLength; i++)
+            {
+                charToCp[charIndex++] = codepoints.Count;
+            }
+
+            codepoints.Add(rune.Value);
+        }
+
+        charToCp[_fullText.Length] = codepoints.Count;
+
+        _codepoints = [.. codepoints];
+        _charToCodepoint = charToCp;
+
+        var classes = new BidiClass[_codepoints.Length];
+        _hasRtl = false;
+        for (var i = 0; i < _codepoints.Length; i++)
+        {
+            classes[i] = UnicodeBidi.GetClass(_codepoints[i]);
+            if (classes[i] is BidiClass.R or BidiClass.AL or BidiClass.RLI or BidiClass.RLO or BidiClass.RLE or BidiClass.AN)
+            {
+                _hasRtl = true;
+            }
+        }
+
+        // Per-char style index (which span owns each char).
+        _charStyleIndex = new int[_fullText.Length];
+        var offset = 0;
+        for (var s = 0; s < _spans.Count; s++)
+        {
+            for (var i = 0; i < _spans[s].Text.Length; i++)
+            {
+                _charStyleIndex[offset + i] = s;
+            }
+
+            offset += _spans[s].Text.Length;
+        }
+
+        if (!_hasRtl)
+        {
+            return;
+        }
+
+        // Levels per UBA paragraph (split at B separators), each with auto-detected direction.
+        _bidiLevels = new byte[_codepoints.Length];
+        var paragraphStart = 0;
+        for (var i = 0; i <= _codepoints.Length; i++)
+        {
+            if (i < _codepoints.Length && classes[i] != BidiClass.B)
+            {
+                continue;
+            }
+
+            var end = Math.Min(i + 1, _codepoints.Length); // include the separator in its paragraph
+            if (end > paragraphStart)
+            {
+                var slice = classes.AsSpan(paragraphStart, end - paragraphStart);
+                var level = BidiAlgorithm.ResolveParagraphLevel(slice);
+                var levels = BidiAlgorithm.ResolveLevels(slice, _codepoints.AsSpan(paragraphStart, end - paragraphStart), level);
+                levels.CopyTo(_bidiLevels.AsSpan(paragraphStart));
+            }
+
+            paragraphStart = end;
+        }
+    }
+
+    /// <summary>
+    /// Visual-order style groups for one line: clusters (base + combining marks) reorder as units
+    /// (L3), mirrored codepoints swap in right-to-left runs (L4), and consecutive same-style
+    /// codepoints merge into one shaping group.
+    /// </summary>
+    private IEnumerable<(string Text, TextStyle Style)> VisualGroups(int start, int end)
+    {
+        var cpStart = _charToCodepoint[start];
+        var cpEnd = _charToCodepoint[end];
+        if (cpEnd <= cpStart)
+        {
+            yield break;
+        }
+
+        // Group into clusters: a base plus following combining marks (kept in logical order).
+        var clusterStarts = new List<int>();
+        var clusterLevels = new List<byte>();
+        for (var cp = cpStart; cp < cpEnd; cp++)
+        {
+            if (cp > cpStart && UnicodeBidi.GetClass(_codepoints[cp]) == BidiClass.NSM &&
+                _bidiLevels[cp] != BidiAlgorithm.RemovedLevel)
+            {
+                continue; // belongs to the previous cluster
+            }
+
+            clusterStarts.Add(cp);
+            clusterLevels.Add(_bidiLevels[cp]);
+        }
+
+        var visual = BidiAlgorithm.ReorderLine([.. clusterLevels], 0, clusterLevels.Count);
+
+        var groupText = new System.Text.StringBuilder();
+        var groupStyle = -1;
+        foreach (var clusterIndex in visual)
+        {
+            var clusterStart = clusterStarts[clusterIndex];
+            var clusterEnd = clusterIndex + 1 < clusterStarts.Count ? clusterStarts[clusterIndex + 1] : cpEnd;
+            var level = clusterLevels[clusterIndex];
+
+            for (var cp = clusterStart; cp < clusterEnd; cp++)
+            {
+                if (_bidiLevels[cp] == BidiAlgorithm.RemovedLevel)
+                {
+                    continue; // formatting characters are not rendered
+                }
+
+                var style = _charStyleIndex[CharIndexOf(cp)];
+                if (style != groupStyle && groupText.Length > 0)
+                {
+                    yield return (groupText.ToString(), _spans[groupStyle].Style);
+                    groupText.Clear();
+                }
+
+                groupStyle = style;
+                var value = level % 2 == 1 ? UnicodeBidi.GetMirror(_codepoints[cp]) : _codepoints[cp];
+                groupText.Append(char.ConvertFromUtf32(value));
+            }
+        }
+
+        if (groupText.Length > 0)
+        {
+            yield return (groupText.ToString(), _spans[groupStyle].Style);
+        }
+    }
+
+    /// <summary>First char index of a codepoint (inverse of _charToCodepoint).</summary>
+    private int CharIndexOf(int codepointIndex)
+    {
+        // Codepoints map to 1–2 chars; walk from the codepoint's position estimate.
+        // _charToCodepoint is monotonic, so binary search the first char with that codepoint.
+        int lo = 0, hi = _fullText.Length - 1;
+        while (lo < hi)
+        {
+            var mid = (lo + hi) / 2;
+            if (_charToCodepoint[mid] < codepointIndex)
+            {
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid;
+            }
+        }
+
+        return lo;
     }
 
     /// <summary>Enumerates (spanText, style, sliceStart, sliceEnd) intersections of [start, end) with the spans.</summary>

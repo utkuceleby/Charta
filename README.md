@@ -42,7 +42,8 @@ Fonts resolve against explicitly registered files first (`FontManager.RegisterFo
 |---|---|
 | Latin (incl. Turkish, Polish, Vietnamese), Cyrillic, Greek | ✅ Full: correct rendering, kerning, and text extraction |
 | CJK | ✅ Rendering, UAX#14 line breaking, and extraction (no vertical text yet) |
-| Arabic, Hebrew, Indic, and other complex/RTL scripts | ⚠️ Renders unjoined and without bidi reordering; a `LayoutDiagnostic` tells you loudly. Correct shaping arrives with the HarfBuzz add-on package on the roadmap. |
+| Hebrew and mixed-direction text | ✅ Built-in UAX#9 bidi (100% conformant): correct reading order, mirrored brackets, correct extraction |
+| Arabic, Indic, and other joining scripts | ⚠️ Reading order is correct (bidi), but letterforms render unjoined; a `LayoutDiagnostic` tells you loudly. Joining arrives with the HarfBuzz add-on package on the roadmap. |
 
 ## Why another PDF library?
 

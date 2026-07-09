@@ -124,9 +124,10 @@ public class LayoutDocumentTests
             Content = new TextElement(lines, Style()),
         };
 
-        var before = GC.GetTotalAllocatedBytes(precise: true);
+        // Thread-local measurement: immune to other test classes allocating in parallel.
+        var before = GC.GetAllocatedBytesForCurrentThread();
         var result = document.Generate(Stream.Null, new PdfWriterOptions { CompressStreams = true });
-        var allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         Assert.True(result.PageCount >= 500, $"Expected ≥500 pages, got {result.PageCount}.");
         Assert.Empty(result.Diagnostics);

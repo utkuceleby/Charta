@@ -37,11 +37,11 @@ public class MultiScriptFluentTests
         Assert.Equal(1, result.PageCount);
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Contains("shaping", diagnostic.Message, StringComparison.Ordinal);
-        Assert.Contains("bidi", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("unjoined", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void HebrewText_AlsoTriggersTheDiagnostic()
+    public void HebrewText_RendersCleanly_WithBidi_NoDiagnostic()
     {
         var arial = WindowsFontPath("arial.ttf");
         if (arial is null)
@@ -51,11 +51,49 @@ public class MultiScriptFluentTests
 
         FontManager.RegisterFontFile(arial);
         var document = Document.Create(doc => doc.Page(page =>
-            page.Content().Text("שלום עולם").FontFamily("Arial")));
+            page.Content().Text("שלום עולם 123").FontFamily("Arial")));
 
         var result = document.GeneratePdf(Stream.Null);
 
-        Assert.Single(result.Diagnostics);
+        Assert.Empty(result.Diagnostics); // Hebrew needs only bidi, which is built in now
+    }
+
+    [Fact]
+    public void MirroredBrackets_SwapInRtlRuns()
+    {
+        var arial = WindowsFontPath("arial.ttf");
+        if (arial is null)
+        {
+            return;
+        }
+
+        FontManager.RegisterFontFile(arial);
+        var font = Charta.Fonts.PdfFont.Parse(File.ReadAllBytes(arial));
+        var openGid = font.Shape("(").Glyphs[0].GlyphId;
+        var closeGid = font.Shape(")").Glyphs[0].GlyphId;
+        Assert.NotEqual(openGid, closeGid);
+
+        // "(שלום)" — in the RTL run the parentheses must render as their mirrors.
+        var document = Document.Create(doc => doc.Page(page =>
+            page.Content().Text("(שלום)").FontFamily("Arial")));
+
+        using var buffer = new MemoryStream();
+        var result = document.Generate(buffer, new Charta.Cos.PdfWriterOptions
+        {
+            XrefMode = Charta.Cos.XrefMode.Classic,
+            CompressStreams = false,
+        }, OverflowBehavior.Clip);
+
+        Assert.Empty(result.Diagnostics);
+        var pdf = System.Text.Encoding.ASCII.GetString(buffer.ToArray());
+        // Reversal puts the logical ')' first; L4 mirroring renders it with the '(' GLYPH — so the
+        // visually-first paren must be the open-paren glyph, exactly like proper RTL typography.
+        var openHex = openGid.ToString("X4", System.Globalization.CultureInfo.InvariantCulture);
+        var closeHex = closeGid.ToString("X4", System.Globalization.CultureInfo.InvariantCulture);
+        var firstOpen = pdf.IndexOf(openHex, StringComparison.Ordinal);
+        var firstClose = pdf.IndexOf(closeHex, StringComparison.Ordinal);
+        Assert.True(firstOpen >= 0 && firstClose >= 0);
+        Assert.True(firstOpen < firstClose, "Expected the '(' glyph (mirrored logical ')') to render first in the RTL run.");
     }
 
     [Fact]
