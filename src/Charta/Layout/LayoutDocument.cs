@@ -15,13 +15,13 @@ internal sealed class PageSection
     public required Element Content { get; init; }
 
     /// <summary>
-    /// Repeated at the top of every page. A factory, not an element: element trees carry pagination
-    /// cursors, so each page needs a fresh instance.
+    /// Repeated at the top of every page; receives the 1-based page number. A factory, not an
+    /// element: element trees carry pagination cursors, so each page needs a fresh instance.
     /// </summary>
-    public Func<Element>? Header { get; init; }
+    public Func<int, Element>? Header { get; init; }
 
     /// <summary>Repeated at the bottom of every page. Factory for the same reason as <see cref="Header"/>.</summary>
-    public Func<Element>? Footer { get; init; }
+    public Func<int, Element>? Footer { get; init; }
 }
 
 /// <summary>
@@ -42,9 +42,9 @@ internal sealed class LayoutDocument
 
     public required Element Content { get; init; }
 
-    public Func<Element>? Header { get; init; }
+    public Func<int, Element>? Header { get; init; }
 
-    public Func<Element>? Footer { get; init; }
+    public Func<int, Element>? Footer { get; init; }
 
     public GenerationResult Generate(Stream output, PdfWriterOptions? options = null) =>
         Generate(
@@ -268,12 +268,12 @@ internal sealed class LayoutDocument
             // Header and footer carve their heights out of this page's body box.
             var bodyTop = contentBox.Y;
             var bodyBottom = contentBox.Y + contentBox.Height;
-            if (section.Header?.Invoke() is { } header)
+            if (section.Header?.Invoke(pageNumber) is { } header)
             {
                 bodyTop += DrawRepeatedElement(context, section, header, contentBox.Y, "Header");
             }
 
-            if (section.Footer?.Invoke() is { } footer)
+            if (section.Footer?.Invoke(pageNumber) is { } footer)
             {
                 var measuredFooter = footer.Measure(new LayoutConstraints(contentBox.Width, contentBox.Height));
                 var footerHeight = Math.Min(measuredFooter.Size.Height, contentBox.Height / 2);

@@ -84,7 +84,7 @@ public interface IRowDescriptor
     IContainer ConstantItem(double width);
 }
 
-/// <summary>Fluent styling for a text block.</summary>
+/// <summary>Fluent styling for a single-style text block.</summary>
 public interface ITextDescriptor
 {
     /// <summary>Font family; resolved against registered fonts first, then system fonts.</summary>
@@ -104,6 +104,83 @@ public interface ITextDescriptor
 
     /// <summary>Selects the italic face of the family.</summary>
     ITextDescriptor Italic();
+
+    /// <summary>Underlines the text.</summary>
+    ITextDescriptor Underline();
+
+    /// <summary>Strikes through the text.</summary>
+    ITextDescriptor Strikethrough();
+
+    /// <summary>Left-aligns the lines (default).</summary>
+    ITextDescriptor AlignLeft();
+
+    /// <summary>Centers the lines within the block.</summary>
+    ITextDescriptor AlignCenter();
+
+    /// <summary>Right-aligns the lines.</summary>
+    ITextDescriptor AlignRight();
+
+    /// <summary>Justifies the lines; the last line of each paragraph stays left-aligned.</summary>
+    ITextDescriptor Justify();
+}
+
+/// <summary>Styling for one span inside a rich text block.</summary>
+public interface ITextSpanDescriptor
+{
+    /// <summary>Font family; resolved against registered fonts first, then system fonts.</summary>
+    ITextSpanDescriptor FontFamily(string family);
+
+    /// <summary>Font size in points. Default: 12.</summary>
+    ITextSpanDescriptor FontSize(double size);
+
+    /// <summary>Text color. Default: black.</summary>
+    ITextSpanDescriptor FontColor(Color color);
+
+    /// <summary>Selects the bold face of the family.</summary>
+    ITextSpanDescriptor Bold();
+
+    /// <summary>Selects the italic face of the family.</summary>
+    ITextSpanDescriptor Italic();
+
+    /// <summary>Underlines the span.</summary>
+    ITextSpanDescriptor Underline();
+
+    /// <summary>Strikes through the span.</summary>
+    ITextSpanDescriptor Strikethrough();
+}
+
+/// <summary>A rich text block: multiple styled spans flowing as one paragraph stream.</summary>
+public interface ITextContentDescriptor
+{
+    /// <summary>Adds a styled fragment.</summary>
+    ITextSpanDescriptor Span(string text);
+
+    /// <summary>
+    /// Adds the current page number. Resolved per page in headers and footers; in flowing content
+    /// it binds to the page the element tree was built for.
+    /// </summary>
+    ITextSpanDescriptor CurrentPageNumber();
+
+    /// <summary>
+    /// Adds the total page count. Enables a second generation pass: the document is laid out once
+    /// to count pages, then rendered with the real number.
+    /// </summary>
+    ITextSpanDescriptor TotalPages();
+
+    /// <summary>Left-aligns the lines (default).</summary>
+    void AlignLeft();
+
+    /// <summary>Centers the lines within the block.</summary>
+    void AlignCenter();
+
+    /// <summary>Right-aligns the lines.</summary>
+    void AlignRight();
+
+    /// <summary>Justifies the lines; the last line of each paragraph stays left-aligned.</summary>
+    void Justify();
+
+    /// <summary>Line height multiplier for the whole block. Default: 1.0.</summary>
+    void LineSpacing(double multiplier);
 }
 
 /// <summary>Describes stacked layers sharing the same bounds.</summary>

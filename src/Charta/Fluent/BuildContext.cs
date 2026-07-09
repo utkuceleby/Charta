@@ -18,6 +18,12 @@ internal sealed class BuildContext
     private readonly Dictionary<object, PdfImage> _images = [];
     private FontChain? _defaultChain;
 
+    /// <summary>The page number repeating bands are currently being built for.</summary>
+    public int CurrentPage { get; set; } = 1;
+
+    /// <summary>Known only during the second pass of a TotalPages() document.</summary>
+    public int? TotalPages { get; init; }
+
     public FontChain ResolveFonts(string? familyName, bool bold, bool italic)
     {
         if (familyName is null && !bold && !italic && _defaultChain is not null)

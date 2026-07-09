@@ -59,7 +59,14 @@ public static class Report
                     }
                 });
 
-                page.Footer().AlignCenter().Text("Charta Sample Report").FontSize(8).FontColor(Color.FromHex(0x888888));
+                page.Footer().Text(t =>
+                {
+                    t.AlignCenter();
+                    t.Span("Charta Sample Report — Page ").FontSize(8).FontColor(Color.FromHex(0x888888));
+                    t.CurrentPageNumber().FontSize(8).FontColor(Color.FromHex(0x888888));
+                    t.Span(" of ").FontSize(8).FontColor(Color.FromHex(0x888888));
+                    t.TotalPages().FontSize(8).FontColor(Color.FromHex(0x888888));
+                });
             });
         }).GeneratePdf(path);
     }

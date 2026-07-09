@@ -38,6 +38,9 @@ internal sealed class PdfFont
     /// <summary>True when the font's cmap covers the codepoint (used by fallback chains).</summary>
     public bool CanMap(int codepoint) => _font.MapCodepoint(codepoint) != 0;
 
+    /// <summary>Glyph ID of the space character (0 when unmapped) — the stretch point for justification.</summary>
+    public ushort SpaceGlyphId => _font.MapCodepoint(' ');
+
     /// <summary>
     /// Simple shaping: one glyph per codepoint via cmap, advances from hmtx, pair kerning from GPOS.
     /// No substitution or bidi — those arrive with the shaping layer. Records glyph usage for subsetting.
@@ -207,6 +210,45 @@ internal sealed class ShapedText(IReadOnlyList<ShapedGlyph> glyphs, double width
     public IReadOnlyList<ShapedGlyph> Glyphs { get; } = glyphs;
 
     public double Width { get; } = width;
+
+    /// <summary>Number of occurrences of the given glyph (used to count stretchable spaces).</summary>
+    public int CountGlyph(ushort glyphId)
+    {
+        var count = 0;
+        foreach (var glyph in Glyphs)
+        {
+            if (glyph.GlyphId == glyphId)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// A copy with extra advance after every occurrence of <paramref name="spaceGlyph"/> —
+    /// justification for composite fonts, where the PDF word-spacing operator does not apply.
+    /// </summary>
+    public ShapedText WithExtraSpaceAdvance(ushort spaceGlyph, double extraFontUnitsPerSpace)
+    {
+        var adjusted = new ShapedGlyph[Glyphs.Count];
+        var added = 0.0;
+        for (var i = 0; i < Glyphs.Count; i++)
+        {
+            var glyph = Glyphs[i];
+            if (glyph.GlyphId == spaceGlyph)
+            {
+                var extra = (int)Math.Round(extraFontUnitsPerSpace);
+                glyph = glyph with { KernAfter = glyph.KernAfter + extra };
+                added += extra;
+            }
+
+            adjusted[i] = glyph;
+        }
+
+        return new ShapedText(adjusted, Width + added * 1000.0 / unitsPerEm, unitsPerEm);
+    }
 
     /// <summary>Identity-H character codes as a PDF hex string, e.g. &lt;00010002&gt;.</summary>
     public string ToHexString()

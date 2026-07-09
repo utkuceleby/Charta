@@ -9,6 +9,9 @@ internal sealed class DocumentDescriptor : IDocumentDescriptor
 
     public Charta.Metadata.DocumentMetadata DocumentMetadata { get; } = new();
 
+    /// <summary>Set when the description contains a TotalPages() span — triggers the counting pre-pass.</summary>
+    public bool UsesTotalPages { get; set; }
+
     public void Page(Action<IPageDescriptor> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -92,8 +95,16 @@ internal sealed class PageDescriptor : IPageDescriptor
             PageSize = new LayoutSize(_size.Width, _size.Height),
             Margin = _margin,
             Content = _content?.Build(context) ?? EmptyElement.Instance,
-            Header = header is null ? null : () => header.Build(context),
-            Footer = footer is null ? null : () => footer.Build(context),
+            Header = header is null ? null : page =>
+            {
+                context.CurrentPage = page;
+                return header.Build(context);
+            },
+            Footer = footer is null ? null : page =>
+            {
+                context.CurrentPage = page;
+                return footer.Build(context);
+            },
         };
     }
 }
@@ -188,6 +199,9 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
     private double _lineSpacing = 1.0;
     private bool _bold;
     private bool _italic;
+    private bool _underline;
+    private bool _strikethrough;
+    private TextAlignment _alignment = TextAlignment.Left;
 
     public ITextDescriptor FontFamily(string family)
     {
@@ -225,12 +239,191 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
         return this;
     }
 
+    public ITextDescriptor Underline()
+    {
+        _underline = true;
+        return this;
+    }
+
+    public ITextDescriptor Strikethrough()
+    {
+        _strikethrough = true;
+        return this;
+    }
+
+    public ITextDescriptor AlignLeft()
+    {
+        _alignment = TextAlignment.Left;
+        return this;
+    }
+
+    public ITextDescriptor AlignCenter()
+    {
+        _alignment = TextAlignment.Center;
+        return this;
+    }
+
+    public ITextDescriptor AlignRight()
+    {
+        _alignment = TextAlignment.Right;
+        return this;
+    }
+
+    public ITextDescriptor Justify()
+    {
+        _alignment = TextAlignment.Justify;
+        return this;
+    }
+
     public Element Build(BuildContext context) =>
-        new TextElement(text, new TextStyle
+        new TextElement(
+            text,
+            new TextStyle
+            {
+                Fonts = context.ResolveFonts(_family, _bold, _italic),
+                FontSize = _size,
+                Color = _color.ToLayout(),
+                LineSpacing = _lineSpacing,
+                Underline = _underline,
+                Strikethrough = _strikethrough,
+            },
+            _alignment);
+}
+
+internal sealed class TextSpanDescriptor : ITextSpanDescriptor
+{
+    public enum SpanKind
+    {
+        Literal,
+        CurrentPageNumber,
+        TotalPages,
+    }
+
+    public required SpanKind Kind { get; init; }
+
+    public string Text { get; init; } = string.Empty;
+
+    public string? Family { get; private set; }
+
+    public double Size { get; private set; } = 12;
+
+    public Color TextColor { get; private set; } = Color.Black;
+
+    public bool IsBold { get; private set; }
+
+    public bool IsItalic { get; private set; }
+
+    public bool IsUnderline { get; private set; }
+
+    public bool IsStrikethrough { get; private set; }
+
+    public ITextSpanDescriptor FontFamily(string family)
+    {
+        Family = family;
+        return this;
+    }
+
+    public ITextSpanDescriptor FontSize(double size)
+    {
+        Size = size;
+        return this;
+    }
+
+    public ITextSpanDescriptor FontColor(Color color)
+    {
+        TextColor = color;
+        return this;
+    }
+
+    public ITextSpanDescriptor Bold()
+    {
+        IsBold = true;
+        return this;
+    }
+
+    public ITextSpanDescriptor Italic()
+    {
+        IsItalic = true;
+        return this;
+    }
+
+    public ITextSpanDescriptor Underline()
+    {
+        IsUnderline = true;
+        return this;
+    }
+
+    public ITextSpanDescriptor Strikethrough()
+    {
+        IsStrikethrough = true;
+        return this;
+    }
+}
+
+internal sealed class TextContentDescriptor : ITextContentDescriptor
+{
+    private readonly List<TextSpanDescriptor> _spans = [];
+    private TextAlignment _alignment = TextAlignment.Left;
+    private double _lineSpacing = 1.0;
+
+    public ITextSpanDescriptor Span(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var span = new TextSpanDescriptor { Kind = TextSpanDescriptor.SpanKind.Literal, Text = text };
+        _spans.Add(span);
+        return span;
+    }
+
+    public ITextSpanDescriptor CurrentPageNumber()
+    {
+        var span = new TextSpanDescriptor { Kind = TextSpanDescriptor.SpanKind.CurrentPageNumber };
+        _spans.Add(span);
+        return span;
+    }
+
+    public ITextSpanDescriptor TotalPages()
+    {
+        DescriptionScope.MarkUsesTotalPages();
+        var span = new TextSpanDescriptor { Kind = TextSpanDescriptor.SpanKind.TotalPages };
+        _spans.Add(span);
+        return span;
+    }
+
+    public void AlignLeft() => _alignment = TextAlignment.Left;
+
+    public void AlignCenter() => _alignment = TextAlignment.Center;
+
+    public void AlignRight() => _alignment = TextAlignment.Right;
+
+    public void Justify() => _alignment = TextAlignment.Justify;
+
+    public void LineSpacing(double multiplier) => _lineSpacing = multiplier;
+
+    public Element Build(BuildContext context)
+    {
+        var spans = new List<StyledSpan>(_spans.Count);
+        foreach (var span in _spans)
         {
-            Fonts = context.ResolveFonts(_family, _bold, _italic),
-            FontSize = _size,
-            Color = _color.ToLayout(),
-            LineSpacing = _lineSpacing,
-        });
+            var text = span.Kind switch
+            {
+                TextSpanDescriptor.SpanKind.CurrentPageNumber =>
+                    context.CurrentPage.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                TextSpanDescriptor.SpanKind.TotalPages =>
+                    context.TotalPages?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?",
+                _ => span.Text,
+            };
+
+            spans.Add(new StyledSpan(text, new TextStyle
+            {
+                Fonts = context.ResolveFonts(span.Family, span.IsBold, span.IsItalic),
+                FontSize = span.Size,
+                Color = span.TextColor.ToLayout(),
+                LineSpacing = _lineSpacing,
+                Underline = span.IsUnderline,
+                Strikethrough = span.IsStrikethrough,
+            }));
+        }
+
+        return new TextElement(spans, _alignment);
+    }
 }

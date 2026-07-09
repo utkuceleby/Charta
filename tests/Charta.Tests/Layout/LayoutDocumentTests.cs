@@ -140,8 +140,8 @@ public class LayoutDocumentTests
     {
         var document = new LayoutDocument
         {
-            Header = () => new TextElement("AA", Style()),
-            Footer = () => new TextElement("BB", Style()),
+            Header = _ => new TextElement("AA", Style()),
+            Footer = _ => new TextElement("BB", Style()),
             Content = new ColumnElement(
             [
                 new TextElement("CC", Style()),
@@ -165,7 +165,7 @@ public class LayoutDocumentTests
     {
         var document = new LayoutDocument
         {
-            Header = () => new ColumnElement([new FixedElement(10, 5000)]),
+            Header = _ => new ColumnElement([new FixedElement(10, 5000)]),
             Content = new TextElement("AB", Style()),
         };
 

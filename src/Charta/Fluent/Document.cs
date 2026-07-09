@@ -61,13 +61,28 @@ public sealed class Document
     internal GenerationResult Generate(Stream output, PdfWriterOptions writerOptions, OverflowBehavior overflow)
     {
         var descriptor = new DocumentDescriptor();
-        _describe(descriptor);
+        using (DescriptionScope.Begin(descriptor))
+        {
+            _describe(descriptor);
+        }
+
         if (descriptor.Pages.Count == 0)
         {
             throw new InvalidOperationException("The document has no pages. Add at least one with doc.Page(...).");
         }
 
-        var context = new BuildContext();
+        int? totalPages = null;
+        if (descriptor.UsesTotalPages)
+        {
+            // Counting pre-pass: lay the document out once (to a null sink) to learn the page count.
+            var countingContext = new BuildContext();
+            var countingSections = descriptor.Pages.Select(page => page.Build(countingContext)).ToList();
+            totalPages = LayoutDocument
+                .Generate(Stream.Null, countingSections, overflow, writerOptions, metadata: null)
+                .PageCount;
+        }
+
+        var context = new BuildContext { TotalPages = totalPages };
         var sections = descriptor.Pages.Select(page => page.Build(context)).ToList();
         return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata);
     }

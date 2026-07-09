@@ -132,6 +132,17 @@ public static class ContainerExtensions
         return descriptor;
     }
 
+    /// <summary>
+    /// Fills the slot with a rich text block: styled spans, page numbers, and block alignment.
+    /// </summary>
+    public static void Text(this IContainer container, Action<ITextContentDescriptor> content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var descriptor = new TextContentDescriptor();
+        content(descriptor);
+        Impl(container).SetSource(descriptor.Build);
+    }
+
     /// <summary>Fills the slot with a PNG or JPEG image scaled to the available width.</summary>
     public static void Image(this IContainer container, byte[] imageData)
     {

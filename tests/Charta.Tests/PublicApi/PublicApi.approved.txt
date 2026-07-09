@@ -42,6 +42,7 @@ namespace Charta
         public static Charta.IContainer Section(this Charta.IContainer container, string name) { }
         public static Charta.IContainer SectionLink(this Charta.IContainer container, string sectionName) { }
         public static void Table(this Charta.IContainer container, System.Action<Charta.ITableDescriptor> content) { }
+        public static void Text(this Charta.IContainer container, System.Action<Charta.ITextContentDescriptor> content) { }
         public static Charta.ITextDescriptor Text(this Charta.IContainer container, string text) { }
         public static Charta.IContainer Width(this Charta.IContainer container, double value) { }
     }
@@ -127,14 +128,41 @@ namespace Charta
     {
         Charta.ITableCellDescriptor Cell();
     }
+    public interface ITextContentDescriptor
+    {
+        void AlignCenter();
+        void AlignLeft();
+        void AlignRight();
+        Charta.ITextSpanDescriptor CurrentPageNumber();
+        void Justify();
+        void LineSpacing(double multiplier);
+        Charta.ITextSpanDescriptor Span(string text);
+        Charta.ITextSpanDescriptor TotalPages();
+    }
     public interface ITextDescriptor
     {
+        Charta.ITextDescriptor AlignCenter();
+        Charta.ITextDescriptor AlignLeft();
+        Charta.ITextDescriptor AlignRight();
         Charta.ITextDescriptor Bold();
         Charta.ITextDescriptor FontColor(Charta.Color color);
         Charta.ITextDescriptor FontFamily(string family);
         Charta.ITextDescriptor FontSize(double size);
         Charta.ITextDescriptor Italic();
+        Charta.ITextDescriptor Justify();
         Charta.ITextDescriptor LineSpacing(double multiplier);
+        Charta.ITextDescriptor Strikethrough();
+        Charta.ITextDescriptor Underline();
+    }
+    public interface ITextSpanDescriptor
+    {
+        Charta.ITextSpanDescriptor Bold();
+        Charta.ITextSpanDescriptor FontColor(Charta.Color color);
+        Charta.ITextSpanDescriptor FontFamily(string family);
+        Charta.ITextSpanDescriptor FontSize(double size);
+        Charta.ITextSpanDescriptor Italic();
+        Charta.ITextSpanDescriptor Strikethrough();
+        Charta.ITextSpanDescriptor Underline();
     }
     public sealed class LayoutDiagnostic
     {
