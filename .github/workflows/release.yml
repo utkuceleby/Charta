@@ -22,7 +22,7 @@ jobs:
       - name: Test
         run: dotnet test -c Release
 
-      - name: Verify the tag matches the package version
+      - name: Verify the tag matches the core package version
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           PKG_VERSION=$(grep -oPm1 '(?<=<Version>)[^<]+' src/Charta/Charta.csproj)
@@ -32,8 +32,12 @@ jobs:
             exit 1
           fi
 
+      # Pack every publishable package (core + add-ons). --skip-duplicate lets an add-on whose
+      # version did not change be re-run harmlessly.
       - name: Pack
-        run: dotnet pack src/Charta -c Release -o artifacts
+        run: |
+          dotnet pack src/Charta -c Release -o artifacts
+          dotnet pack src/Charta.Shaping.HarfBuzz -c Release -o artifacts
 
       - name: Push to NuGet
         run: >

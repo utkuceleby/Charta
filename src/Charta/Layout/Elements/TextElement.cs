@@ -117,7 +117,9 @@ internal sealed class TextElement : Element
 
     public override void Draw(DrawingContext context, in LayoutRect bounds)
     {
-        if (!_complexScriptReported && ScriptSupport.ContainsComplexScript(_fullText))
+        if (!_complexScriptReported &&
+            !Charta.Fonts.TextShaperRegistry.Current.SupportsComplexScript &&
+            ScriptSupport.ContainsComplexScript(_fullText))
         {
             _complexScriptReported = true;
             context.AddDiagnostic(

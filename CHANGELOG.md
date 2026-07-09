@@ -5,6 +5,22 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.1.0]
+
+### Added
+
+- **`Charta.Shaping.HarfBuzz`** add-on package: full OpenType shaping for complex scripts. Call
+  `ChartaHarfBuzz.Register()` and Arabic, Syriac, and Indic text joins, forms contextual glyphs,
+  and positions marks correctly; ligatures still extract to their source text. The native HarfBuzz
+  binary lives only in this opt-in package — the core stays managed and dependency-free.
+
+### Changed
+
+- Text shaping moved behind an internal `ITextShaper` seam (the add-on plugs into it). The built-in
+  simple shaper is now cluster-aware for right-to-left text, and the RTL layout path shapes
+  directional runs in logical order and orders them by rule L2. No public API change; left-to-right
+  output is byte-identical.
+
 ## [1.0.0]
 
 ### Added

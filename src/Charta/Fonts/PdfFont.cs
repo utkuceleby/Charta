@@ -296,4 +296,107 @@ internal sealed class ShapedText(IReadOnlyList<ShapedGlyph> glyphs, double width
         sb.Append(">] TJ");
         return sb.ToString();
     }
+
+    /// <summary>
+    /// Size-aware emission that also honors mark offsets. Falls back to the size-independent
+    /// <see cref="ToTextOperator()"/> when there are none, so glyphs without offsets stay
+    /// byte-identical. X-offsets ride inside the TJ array; Y-offsets break it around a text-rise
+    /// (Ts) operator, whose operand depends on the font size.
+    /// </summary>
+    public string ToTextOperator(double fontSize)
+    {
+        var hasOffset = false;
+        foreach (var glyph in Glyphs)
+        {
+            if (glyph.XOffset != 0 || glyph.YOffset != 0)
+            {
+                hasOffset = true;
+                break;
+            }
+        }
+
+        if (!hasOffset)
+        {
+            return ToTextOperator();
+        }
+
+        var sb = new StringBuilder(Glyphs.Count * 8 + 16);
+        var openArray = false;
+        var openString = false;
+        var currentRise = 0;
+
+        void CloseString()
+        {
+            if (openString)
+            {
+                sb.Append('>');
+                openString = false;
+            }
+        }
+
+        void CloseArray()
+        {
+            if (openArray)
+            {
+                CloseString();
+                sb.Append("] TJ\n");
+                openArray = false;
+            }
+        }
+
+        void EmitNumber(int value)
+        {
+            CloseString();
+            sb.Append(' ').Append(value.ToString(CultureInfo.InvariantCulture)).Append(' ');
+        }
+
+        void EmitHex(ushort gid)
+        {
+            if (!openString)
+            {
+                sb.Append('<');
+                openString = true;
+            }
+
+            sb.Append(gid.ToString("X4", CultureInfo.InvariantCulture));
+        }
+
+        foreach (var glyph in Glyphs)
+        {
+            var rise = (int)Math.Round(glyph.YOffset * fontSize / unitsPerEm);
+            if (rise != currentRise)
+            {
+                CloseArray();
+                sb.Append(rise.ToString(CultureInfo.InvariantCulture)).Append(" Ts\n");
+                currentRise = rise;
+            }
+
+            if (!openArray)
+            {
+                sb.Append('[');
+                openArray = true;
+            }
+
+            if (glyph.XOffset != 0)
+            {
+                EmitNumber((int)Math.Round(-glyph.XOffset * 1000.0 / unitsPerEm));
+            }
+
+            EmitHex(glyph.GlyphId);
+
+            var after = (int)Math.Round((glyph.XOffset - glyph.KernAfter) * 1000.0 / unitsPerEm);
+            if (after != 0)
+            {
+                EmitNumber(after);
+            }
+        }
+
+        CloseArray();
+        if (currentRise != 0)
+        {
+            sb.Append("0 Ts");
+        }
+
+        return sb.ToString().TrimEnd('\n');
+    }
 }

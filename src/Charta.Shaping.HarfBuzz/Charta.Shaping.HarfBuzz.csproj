@@ -3,21 +3,17 @@
   <PropertyGroup>
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <IsAotCompatible>true</IsAotCompatible>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>Charta</PackageId>
+    <PackageId>Charta.Shaping.HarfBuzz</PackageId>
     <Version>1.1.0</Version>
     <Authors>Utku Celebi</Authors>
-    <Description>A permanently-MIT PDF generation library for .NET: fluent layout API, automatic pagination and UAX#14 line breaking, TrueType subsetting with kerning, zero dependencies, streaming output, NativeAOT-ready.</Description>
+    <Description>HarfBuzz text shaping for Charta: correct cursive joining and mark positioning for Arabic, Indic, and other complex scripts. Reference this package and call ChartaHarfBuzz.Register().</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>pdf;pdf-generation;document;report;invoice;layout;fonts</PackageTags>
+    <PackageTags>pdf;charta;text-shaping;harfbuzz;arabic;rtl;opentype</PackageTags>
     <PackageProjectUrl>https://github.com/utkuceleby/Charta</PackageProjectUrl>
-    <PackageReleaseNotes>See CHANGELOG.md in the repository.</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/utkuceleby/Charta</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -28,11 +24,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-    <InternalsVisibleTo Include="Charta.Tests" />
-    <InternalsVisibleTo Include="Charta.Smoke" />
-    <InternalsVisibleTo Include="Charta.Shaping.HarfBuzz" />
     <InternalsVisibleTo Include="Charta.Shaping.HarfBuzz.Tests" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <ProjectReference Include="..\Charta\Charta.csproj" />
+    <PackageReference Include="HarfBuzzSharp" Version="8.3.1.1" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="8.3.1.1" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.macOS" Version="8.3.1.1" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" Version="8.3.1.1" />
   </ItemGroup>
 
 </Project>

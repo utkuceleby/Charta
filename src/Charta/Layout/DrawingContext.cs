@@ -79,7 +79,7 @@ internal sealed class DrawingContext
         Append($"{F(color.R)} {F(color.G)} {F(color.B)} rg");
         Append($"/{name} {F(fontSize)} Tf");
         Append($"{F(x)} {F(_pageHeight - baselineY)} Td");
-        Append(text.ToTextOperator());
+        Append(text.ToTextOperator(fontSize));
         Append("ET");
     }
 

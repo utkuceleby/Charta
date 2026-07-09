@@ -48,7 +48,12 @@ Fonts resolve against explicitly registered files first (`FontManager.RegisterFo
 | Latin (incl. Turkish, Polish, Vietnamese), Cyrillic, Greek | ✅ Full: correct rendering, kerning, and text extraction |
 | CJK | ✅ Rendering, UAX#14 line breaking, and extraction (no vertical text yet) |
 | Hebrew and mixed-direction text | ✅ Built-in UAX#9 bidi (100% conformant): correct reading order, mirrored brackets, correct extraction |
-| Arabic, Indic, and other joining scripts | ⚠️ Reading order is correct (bidi), but letterforms render unjoined; a `LayoutDiagnostic` tells you loudly. Joining arrives with the HarfBuzz add-on package on the roadmap. |
+| Arabic, Indic, and other joining scripts | ✅ with the [`Charta.Shaping.HarfBuzz`](https://www.nuget.org/packages/Charta.Shaping.HarfBuzz) add-on — cursive joining, contextual forms, and marks. Without it, reading order is correct but letters render unjoined and a `LayoutDiagnostic` says so. |
+
+```csharp
+// Enable full shaping for Arabic/Indic (optional add-on, one line at startup):
+Charta.Shaping.HarfBuzz.ChartaHarfBuzz.Register();
+```
 
 ## Why another PDF library?
 
