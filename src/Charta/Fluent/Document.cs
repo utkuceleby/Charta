@@ -51,7 +51,7 @@ public sealed class Document
             output,
             new PdfWriterOptions { CompressStreams = options?.Compress ?? true },
             options?.Overflow ?? OverflowBehavior.Clip,
-            cancellationToken);
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>Generates the PDF into a file.</summary>
@@ -62,8 +62,56 @@ public sealed class Document
         return GeneratePdf(file, options, cancellationToken);
     }
 
+    /// <summary>
+    /// Generates a digitally signed PDF (PAdES). The document is built into memory, the signature's
+    /// byte range is computed, the <paramref name="signer"/> produces the CMS container, and it is
+    /// embedded — an invisible signature over the whole document. Use a signer from the
+    /// <c>Charta.Signing</c> add-on.
+    /// </summary>
+    public GenerationResult GenerateSignedPdf(
+        Stream output,
+        IPdfSigner signer,
+        SignatureInfo? info = null,
+        PdfSaveOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        ArgumentNullException.ThrowIfNull(signer);
+
+        using var buffer = new MemoryStream();
+        var result = Generate(
+            buffer,
+            new PdfWriterOptions { CompressStreams = options?.Compress ?? true },
+            options?.Overflow ?? OverflowBehavior.Clip,
+            new Charta.Signing.SigningRequest(signer, info ?? new SignatureInfo()),
+            cancellationToken);
+
+        var bytes = buffer.ToArray();
+        Charta.Signing.PdfSignature.PatchSignature(bytes, signer);
+        output.Write(bytes);
+        return result;
+    }
+
+    /// <summary>Signs and writes to a file.</summary>
+    public GenerationResult GenerateSignedPdf(
+        string filePath,
+        IPdfSigner signer,
+        SignatureInfo? info = null,
+        PdfSaveOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+        using var file = File.Create(filePath);
+        return GenerateSignedPdf(file, signer, info, options, cancellationToken);
+    }
+
     /// <summary>Test seam: full control over writer options (xref mode, compression).</summary>
-    internal GenerationResult Generate(Stream output, PdfWriterOptions writerOptions, OverflowBehavior overflow, CancellationToken cancellationToken = default)
+    internal GenerationResult Generate(
+        Stream output,
+        PdfWriterOptions writerOptions,
+        OverflowBehavior overflow,
+        Charta.Signing.SigningRequest? signing = null,
+        CancellationToken cancellationToken = default)
     {
         var descriptor = new DocumentDescriptor();
         using (DescriptionScope.Begin(descriptor))
@@ -83,12 +131,12 @@ public sealed class Document
             var countingContext = new BuildContext();
             var countingSections = descriptor.Pages.Select(page => page.Build(countingContext)).ToList();
             totalPages = LayoutDocument
-                .Generate(Stream.Null, countingSections, overflow, writerOptions, metadata: null, cancellationToken)
+                .Generate(Stream.Null, countingSections, overflow, writerOptions, metadata: null, cancellationToken: cancellationToken)
                 .PageCount;
         }
 
         var context = new BuildContext { TotalPages = totalPages };
         var sections = descriptor.Pages.Select(page => page.Build(context)).ToList();
-        return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata, cancellationToken);
+        return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata, signing, cancellationToken);
     }
 }

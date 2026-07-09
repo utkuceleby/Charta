@@ -59,6 +59,7 @@ internal sealed class LayoutDocument
         OverflowBehavior overflowBehavior,
         PdfWriterOptions? options = null,
         DocumentMetadata? metadata = null,
+        Charta.Signing.SigningRequest? signing = null,
         CancellationToken cancellationToken = default)
     {
         using var writer = new PdfWriter(output, options);
@@ -72,9 +73,13 @@ internal sealed class LayoutDocument
         var pageRefs = new List<CosReference>();
         var navigation = new NavigationCollector();
 
+        // The signature widget must live in the first page's annotations, so reserve its object
+        // number before composing; ComposeSection injects it into page 1 only.
+        var signatureFieldRef = signing is null ? null : writer.Allocate();
+
         foreach (var section in sections)
         {
-            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation, cancellationToken);
+            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation, signatureFieldRef, cancellationToken);
             if (pageRefs.Count >= MaxPages)
             {
                 break;
@@ -105,6 +110,13 @@ internal sealed class LayoutDocument
         };
 
         WriteNavigation(writer, catalog, navigation, pageRefs, diagnostics);
+
+        if (signing is not null && signatureFieldRef is not null && pageRefs.Count > 0)
+        {
+            var sigValueRef = Charta.Signing.PdfSignature.WriteSignatureValue(writer, signing);
+            writer.WriteObject(signatureFieldRef, Charta.Signing.PdfSignature.BuildSignatureField(sigValueRef, pageRefs[0]));
+            catalog[CosNames.AcroForm] = Charta.Signing.PdfSignature.BuildAcroForm(signatureFieldRef);
+        }
 
         CosReference? infoRef = null;
         if (metadata is { HasAnyValue: true })
@@ -254,6 +266,7 @@ internal sealed class LayoutDocument
         List<LayoutDiagnostic> diagnostics,
         OverflowBehavior overflowBehavior,
         NavigationCollector navigation,
+        CosReference? signatureFieldRef,
         CancellationToken cancellationToken)
     {
         var contentBox = new LayoutRect(
@@ -313,12 +326,19 @@ internal sealed class LayoutDocument
                 [CosNames.Resources] = resourcesRef,
                 [CosNames.Contents] = contentRef,
             };
-            if (context.Annotations.Count > 0)
+            // The signature widget goes on the very first page only.
+            var includeSignature = signatureFieldRef is not null && pageRefs.Count == 0;
+            if (context.Annotations.Count > 0 || includeSignature)
             {
                 var annots = new CosArray();
                 foreach (var annotation in context.Annotations)
                 {
                     annots.Add(BuildLinkAnnotation(annotation, section.PageSize.Height));
+                }
+
+                if (includeSignature)
+                {
+                    annots.Add(signatureFieldRef!);
                 }
 
                 pageDict[CosNames.Annots] = annots;

@@ -5,6 +5,20 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.2.0]
+
+### Added
+
+- **`Charta.Signing`** add-on package: PAdES digital signatures. `Document.GenerateSignedPdf(...)`
+  with a signer from `PdfSigners.FromCertificate(cert)` produces an invisible PAdES B-B signature —
+  a detached CMS SignedData over the whole document, SHA-256, with the ESS signing-certificate-v2
+  attribute and the certificate chain. Built on the .NET cryptography stack only: no BouncyCastle,
+  no native dependencies. Free digital signing is something no other permissively-licensed .NET PDF
+  library offers.
+- Core: `IPdfSigner` / `SignatureInfo` seam and `GenerateSignedPdf` overloads (stream and file). The
+  core does only the PDF plumbing — the byte-range placeholder and patching — so it stays
+  dependency-free; the cryptography lives in the add-on.
+
 ## [1.1.0]
 
 ### Added

@@ -38,6 +38,7 @@ jobs:
         run: |
           dotnet pack src/Charta -c Release -o artifacts
           dotnet pack src/Charta.Shaping.HarfBuzz -c Release -o artifacts
+          dotnet pack src/Charta.Signing -c Release -o artifacts
 
       - name: Push to NuGet
         run: >

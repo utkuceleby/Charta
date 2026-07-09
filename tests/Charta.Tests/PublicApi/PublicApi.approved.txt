@@ -50,6 +50,8 @@ namespace Charta
     {
         public Charta.GenerationResult GeneratePdf(System.IO.Stream output, Charta.PdfSaveOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
         public Charta.GenerationResult GeneratePdf(string filePath, Charta.PdfSaveOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public Charta.GenerationResult GenerateSignedPdf(System.IO.Stream output, Charta.IPdfSigner signer, Charta.SignatureInfo? info = null, Charta.PdfSaveOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public Charta.GenerationResult GenerateSignedPdf(string filePath, Charta.IPdfSigner signer, Charta.SignatureInfo? info = null, Charta.PdfSaveOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
         public static Charta.Document Create(System.Action<Charta.IDocumentDescriptor> describe) { }
     }
     public static class FontManager
@@ -101,6 +103,11 @@ namespace Charta
         void Margin(double points);
         void Margin(double value, Charta.Unit unit);
         void Size(Charta.PageSize size);
+    }
+    public interface IPdfSigner
+    {
+        int ReserveBytes { get; }
+        byte[] SignContent(System.ReadOnlySpan<byte> content);
     }
     public interface IRowDescriptor
     {
@@ -201,6 +208,15 @@ namespace Charta
         public PdfSaveOptions() { }
         public bool Compress { get; init; }
         public Charta.OverflowBehavior Overflow { get; init; }
+    }
+    public sealed class SignatureInfo
+    {
+        public SignatureInfo() { }
+        public string? ContactInfo { get; init; }
+        public string? Location { get; init; }
+        public string? Name { get; init; }
+        public string? Reason { get; init; }
+        public System.DateTimeOffset? SigningTime { get; init; }
     }
     public enum Unit
     {

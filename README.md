@@ -103,6 +103,20 @@ page.Footer().Text(t =>
 });
 ```
 
+### Digital signatures
+
+The optional [`Charta.Signing`](https://www.nuget.org/packages/Charta.Signing) add-on signs a
+document with an X.509 certificate — a PAdES B-B signature, built on the .NET crypto stack (no
+BouncyCastle, no native dependencies):
+
+```csharp
+using Charta.Signing;
+
+var signer = PdfSigners.FromCertificate(certificate);
+Document.Create(doc => /* ... */)
+    .GenerateSignedPdf("signed.pdf", signer, new SignatureInfo { Reason = "Approval" });
+```
+
 ### Fonts on servers and in Docker
 
 Register fonts explicitly — output becomes reproducible and independent of what the host has

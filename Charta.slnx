@@ -7,10 +7,12 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Charta.Shaping.HarfBuzz/Charta.Shaping.HarfBuzz.csproj" />
+    <Project Path="src/Charta.Signing/Charta.Signing.csproj" />
     <Project Path="src/Charta/Charta.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Charta.Shaping.HarfBuzz.Tests/Charta.Shaping.HarfBuzz.Tests.csproj" />
+    <Project Path="tests/Charta.Signing.Tests/Charta.Signing.Tests.csproj" />
     <Project Path="tests/Charta.Smoke/Charta.Smoke.csproj" />
     <Project Path="tests/Charta.Tests/Charta.Tests.csproj" />
   </Folder>

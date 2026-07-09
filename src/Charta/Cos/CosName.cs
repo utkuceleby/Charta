@@ -133,4 +133,25 @@ internal static class CosNames
     public static readonly CosName Creator = CosName.Get("Creator");
     public static readonly CosName Producer = CosName.Get("Producer");
     public static readonly CosName CreationDate = CosName.Get("CreationDate");
+    public static readonly CosName AcroForm = CosName.Get("AcroForm");
+    public static readonly CosName Fields = CosName.Get("Fields");
+    public static readonly CosName SigFlags = CosName.Get("SigFlags");
+    public static readonly CosName FT = CosName.Get("FT");
+    public static readonly CosName Sig = CosName.Get("Sig");
+    public static readonly CosName Widget = CosName.Get("Widget");
+    public static readonly CosName T = CosName.Get("T");
+    public static readonly CosName V = CosName.Get("V");
+    public static readonly CosName ByteRange = CosName.Get("ByteRange");
+    public static readonly CosName SubFilter = CosName.Get("SubFilter");
+    public static readonly CosName AdobePpkLite = CosName.Get("Adobe.PPKLite");
+    public static readonly CosName EtsiCadesDetached = CosName.Get("ETSI.CAdES.detached");
+    public static readonly CosName Reason = CosName.Get("Reason");
+    public static readonly CosName Location = CosName.Get("Location");
+    public static readonly CosName ContactInfo = CosName.Get("ContactInfo");
+    public static readonly CosName M = CosName.Get("M");
+    public static readonly CosName Name = CosName.Get("Name");
+    public static readonly CosName Ap = CosName.Get("AP");
+    public static readonly CosName N = CosName.Get("N");
+    public static readonly CosName P = CosName.Get("P");
+    public static readonly CosName F = CosName.Get("F");
 }
