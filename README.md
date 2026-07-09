@@ -2,7 +2,39 @@
 
 A permanently-MIT PDF generation library for .NET — fluent layout API, zero native dependencies, streaming output, NativeAOT-ready.
 
-> **Status: early development.** The core PDF writer is being built milestone by milestone. Nothing here is API-stable yet. Watch the repository for the first usable `0.1` release.
+> **Status: pre-release.** The fluent API below works today; the surface may still shift before `0.1` ships on NuGet.
+
+## Quick start
+
+```csharp
+using Charta;
+
+var result = Document.Create(doc =>
+{
+    doc.Page(page =>
+    {
+        page.Size(PageSizes.A4);
+        page.Margin(2, Unit.Centimeter);
+        page.Header().Text("Invoice #1042").FontSize(20).Bold();
+        page.Content().Column(col =>
+        {
+            col.Spacing(10);
+            col.Item().Text("Thanks for your purchase! Line breaking, kerning, and pagination are automatic.");
+            col.Item().LineHorizontal(1);
+            col.Item().Row(row =>
+            {
+                row.RelativeItem().Text("Total");
+                row.ConstantItem(120).AlignRight().Text("€ 1.250,00").Bold();
+            });
+        });
+        page.Footer().AlignCenter().Text("Page footer").FontSize(9);
+    });
+}).GeneratePdf("invoice.pdf");
+
+// result.Diagnostics tells you if anything didn't fit — Charta clips and reports, it never throws.
+```
+
+Fonts resolve against explicitly registered files first (`FontManager.RegisterFont(...)` — the reproducible path for servers and containers), then against the operating system's installed fonts. Registered TrueType fonts are always subset and embedded.
 
 ## Why another PDF library?
 

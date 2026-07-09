@@ -35,6 +35,10 @@ Emit("image-sample.pdf", stream => ImageSampleDocument.Write(stream, png, classi
 Emit("layout-sample.pdf", stream => LayoutSample.Build().Generate(stream, classicUncompressed));
 Emit("layout-sample-compressed.pdf", stream => LayoutSample.Build().Generate(stream, streamCompressed), golden: false);
 
+Charta.FontManager.RegisterFont(font);
+Emit("fluent-sample.pdf", stream => FluentSample.Build().Generate(stream, classicUncompressed, Charta.OverflowBehavior.Clip));
+Emit("fluent-sample-compressed.pdf", stream => FluentSample.Build().GeneratePdf(stream), golden: false);
+
 // Optional second argument: a real font file to exercise the pipeline with (system-dependent, never golden).
 if (args.Length > 1)
 {

@@ -1,0 +1,164 @@
+namespace Charta
+{
+    public readonly struct Color : System.IEquatable<Charta.Color>
+    {
+        public static readonly Charta.Color Black;
+        public static readonly Charta.Color White;
+        public Color(byte R, byte G, byte B) { }
+        public byte B { get; init; }
+        public byte G { get; init; }
+        public byte R { get; init; }
+        public static Charta.Color FromHex(int rgb) { }
+    }
+    public static class ContainerExtensions
+    {
+        public static Charta.IContainer AlignCenter(this Charta.IContainer container) { }
+        public static Charta.IContainer AlignLeft(this Charta.IContainer container) { }
+        public static Charta.IContainer AlignRight(this Charta.IContainer container) { }
+        public static Charta.IContainer Background(this Charta.IContainer container, Charta.Color color) { }
+        public static Charta.IContainer Border(this Charta.IContainer container, double thickness) { }
+        public static Charta.IContainer Border(this Charta.IContainer container, double thickness, Charta.Color color) { }
+        public static void Column(this Charta.IContainer container, System.Action<Charta.IColumnDescriptor> content) { }
+        public static void Component(this Charta.IContainer container, Charta.IComponent component) { }
+        public static Charta.IContainer Height(this Charta.IContainer container, double value) { }
+        public static void Image(this Charta.IContainer container, byte[] imageData) { }
+        public static void Image(this Charta.IContainer container, string filePath) { }
+        public static void LineHorizontal(this Charta.IContainer container, double thickness) { }
+        public static void LineHorizontal(this Charta.IContainer container, double thickness, Charta.Color color) { }
+        public static Charta.IContainer MaxHeight(this Charta.IContainer container, double value) { }
+        public static Charta.IContainer MaxWidth(this Charta.IContainer container, double value) { }
+        public static Charta.IContainer MinHeight(this Charta.IContainer container, double value) { }
+        public static Charta.IContainer MinWidth(this Charta.IContainer container, double value) { }
+        public static Charta.IContainer Padding(this Charta.IContainer container, double all) { }
+        public static Charta.IContainer Padding(this Charta.IContainer container, double left, double top, double right, double bottom) { }
+        public static Charta.IContainer PaddingHorizontal(this Charta.IContainer container, double value) { }
+        public static Charta.IContainer PaddingVertical(this Charta.IContainer container, double value) { }
+        public static void PageBreak(this Charta.IContainer container) { }
+        public static void Row(this Charta.IContainer container, System.Action<Charta.IRowDescriptor> content) { }
+        public static Charta.ITextDescriptor Text(this Charta.IContainer container, string text) { }
+        public static Charta.IContainer Width(this Charta.IContainer container, double value) { }
+    }
+    public sealed class Document
+    {
+        public Charta.GenerationResult GeneratePdf(System.IO.Stream output, Charta.PdfSaveOptions? options = null) { }
+        public Charta.GenerationResult GeneratePdf(string filePath, Charta.PdfSaveOptions? options = null) { }
+        public static Charta.Document Create(System.Action<Charta.IDocumentDescriptor> describe) { }
+    }
+    public static class FontManager
+    {
+        public static void RegisterFont(System.IO.Stream fontStream) { }
+        public static void RegisterFont(byte[] fontData) { }
+        public static void RegisterFontFile(string path) { }
+    }
+    public sealed class GenerationResult
+    {
+        public GenerationResult() { }
+        public required System.Collections.Generic.IReadOnlyList<Charta.LayoutDiagnostic> Diagnostics { get; init; }
+        public required int PageCount { get; init; }
+    }
+    public interface IColumnDescriptor
+    {
+        Charta.IContainer Item();
+        void Spacing(double value);
+    }
+    public interface IComponent
+    {
+        void Compose(Charta.IContainer container);
+    }
+    public interface IContainer { }
+    public interface IDocumentDescriptor
+    {
+        void Page(System.Action<Charta.IPageDescriptor> configure);
+    }
+    public interface IPageDescriptor
+    {
+        Charta.IContainer Content();
+        Charta.IContainer Footer();
+        Charta.IContainer Header();
+        void Margin(double points);
+        void Margin(double value, Charta.Unit unit);
+        void Size(Charta.PageSize size);
+    }
+    public interface IRowDescriptor
+    {
+        Charta.IContainer ConstantItem(double width);
+        Charta.IContainer RelativeItem(double weight = 1);
+        void Spacing(double value);
+    }
+    public interface ITextDescriptor
+    {
+        Charta.ITextDescriptor Bold();
+        Charta.ITextDescriptor FontColor(Charta.Color color);
+        Charta.ITextDescriptor FontFamily(string family);
+        Charta.ITextDescriptor FontSize(double size);
+        Charta.ITextDescriptor Italic();
+        Charta.ITextDescriptor LineSpacing(double multiplier);
+    }
+    public sealed class LayoutDiagnostic
+    {
+        public LayoutDiagnostic() { }
+        public required string ElementPath { get; init; }
+        public required string Message { get; init; }
+        public required int PageNumber { get; init; }
+    }
+    public sealed class LayoutException : System.Exception
+    {
+        public LayoutException() { }
+        public LayoutException(string message) { }
+        public LayoutException(string message, System.Exception innerException) { }
+    }
+    public enum OverflowBehavior
+    {
+        Clip = 0,
+        Throw = 1,
+    }
+    public readonly struct PageSize : System.IEquatable<Charta.PageSize>
+    {
+        public PageSize(double Width, double Height) { }
+        public double Height { get; init; }
+        public double Width { get; init; }
+    }
+    public static class PageSizes
+    {
+        public static readonly Charta.PageSize A3;
+        public static readonly Charta.PageSize A4;
+        public static readonly Charta.PageSize A5;
+        public static readonly Charta.PageSize Legal;
+        public static readonly Charta.PageSize Letter;
+    }
+    public sealed class PdfSaveOptions
+    {
+        public PdfSaveOptions() { }
+        public bool Compress { get; init; }
+        public Charta.OverflowBehavior Overflow { get; init; }
+    }
+    public enum Unit
+    {
+        Point = 0,
+        Millimeter = 1,
+        Centimeter = 2,
+        Inch = 3,
+    }
+    public static class UnitExtensions
+    {
+        public static double ToPoints(this Charta.Unit unit, double value) { }
+    }
+}
+namespace Charta.Fonts
+{
+    public sealed class FontFormatException : System.Exception
+    {
+        public FontFormatException() { }
+        public FontFormatException(string message) { }
+        public FontFormatException(string message, System.Exception innerException) { }
+    }
+}
+namespace Charta.Imaging
+{
+    public sealed class ImageFormatException : System.Exception
+    {
+        public ImageFormatException() { }
+        public ImageFormatException(string message) { }
+        public ImageFormatException(string message, System.Exception innerException) { }
+    }
+}

@@ -103,13 +103,15 @@ internal sealed class TextElement(string text, TextStyle style) : Element
         var lineEnd = 0;       // exclusive end of accepted segments
         var lineFullWidth = 0.0; // width including trailing spaces of accepted segments
         var segmentStart = 0;
+        var spaceWidth = MeasureWidth(" ");
 
         foreach (var (position, mandatory) in LineBreaker.FindBreaks(text))
         {
             var segment = text[segmentStart..position];
             var visible = segment.TrimEnd(LineTerminators);
-            var fullWidth = MeasureWidth(visible);
-            var fittingWidth = MeasureWidth(visible.TrimEnd(' ')); // spaces before a break are free
+            var trimmed = visible.TrimEnd(' ');
+            var fittingWidth = MeasureWidth(trimmed); // spaces before a break are free
+            var fullWidth = fittingWidth + (visible.Length - trimmed.Length) * spaceWidth;
 
             if (lineEnd > lineStart && lineFullWidth + fittingWidth > availableWidth)
             {

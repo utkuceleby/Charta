@@ -43,16 +43,6 @@ internal readonly record struct MeasureResult(LayoutSize Size, LayoutVerdict Ver
         new(new LayoutSize(width, height), LayoutVerdict.Overflowing);
 }
 
-/// <summary>What to do when content reports <see cref="LayoutVerdict.Overflowing"/>.</summary>
-internal enum OverflowBehavior
-{
-    /// <summary>Clip at the boundary and record a diagnostic. The default — generation never fails.</summary>
-    Clip,
-
-    /// <summary>Throw <see cref="LayoutException"/>. Opt-in strictness for CI pipelines.</summary>
-    Throw,
-}
-
 /// <summary>An sRGB color with components in [0, 1].</summary>
 internal readonly record struct LayoutColor(double R, double G, double B)
 {
@@ -61,33 +51,8 @@ internal readonly record struct LayoutColor(double R, double G, double B)
     public static LayoutColor FromRgb(byte r, byte g, byte b) => new(r / 255.0, g / 255.0, b / 255.0);
 }
 
-/// <summary>A non-fatal layout problem: what did not fit, where, and what was done about it.</summary>
-internal sealed class LayoutDiagnostic
+/// <summary>Converts the public color to layout-space components.</summary>
+internal static class ColorConversions
 {
-    public required string ElementPath { get; init; }
-
-    public required string Message { get; init; }
-
-    public required int PageNumber { get; init; }
-}
-
-/// <summary>Thrown only under <see cref="OverflowBehavior.Throw"/>; carries the diagnostic that would have been recorded.</summary>
-public sealed class LayoutException : Exception
-{
-    /// <summary>Initializes the exception without a message.</summary>
-    public LayoutException()
-    {
-    }
-
-    /// <summary>Initializes the exception with a message describing the overflow.</summary>
-    public LayoutException(string message)
-        : base(message)
-    {
-    }
-
-    /// <summary>Initializes the exception with a message and an underlying cause.</summary>
-    public LayoutException(string message, Exception innerException)
-        : base(message, innerException)
-    {
-    }
+    public static LayoutColor ToLayout(this Color color) => new(color.R / 255.0, color.G / 255.0, color.B / 255.0);
 }

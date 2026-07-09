@@ -53,6 +53,32 @@ internal sealed class FontRegistry
         }
     }
 
+    /// <summary>Best registered face regardless of family — the default when no family was requested.</summary>
+    public FontFace? ResolveAnyRegistered(bool bold = false, bool italic = false)
+    {
+        lock (_gate)
+        {
+            FontFace? best = null;
+            var bestScore = -1;
+            foreach (var face in _registered)
+            {
+                if (!face.HasTrueTypeOutlines)
+                {
+                    continue;
+                }
+
+                var score = (face.IsBold == bold ? 2 : 0) + (face.IsItalic == italic ? 1 : 0);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = face;
+                }
+            }
+
+            return best;
+        }
+    }
+
     private static FontFace? ResolveIn(List<FontFace> faces, string familyName, bool bold, bool italic)
     {
         FontFace? best = null;

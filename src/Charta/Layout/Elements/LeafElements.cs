@@ -50,3 +50,19 @@ internal sealed class PageBreakElement : Element
 
     public override void Draw(DrawingContext context, in LayoutRect bounds) => _consumed = true;
 }
+
+/// <summary>A zero-size placeholder for container slots that were never filled.</summary>
+internal sealed class EmptyElement : Element
+{
+    public static readonly EmptyElement Instance = new();
+
+    private EmptyElement()
+    {
+    }
+
+    public override MeasureResult Measure(in LayoutConstraints constraints) => MeasureResult.Complete(0, 0);
+
+    public override void Draw(DrawingContext context, in LayoutRect bounds)
+    {
+    }
+}
