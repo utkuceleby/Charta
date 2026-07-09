@@ -1,4 +1,5 @@
 using Charta.Imaging;
+using Charta.Svg;
 
 namespace Charta.Layout.Elements;
 
@@ -20,6 +21,49 @@ internal sealed class ImageElement(PdfImage image) : Element
 
     public override void Draw(DrawingContext context, in LayoutRect bounds) =>
         context.DrawImage(image, bounds);
+}
+
+/// <summary>
+/// A fixed-size vector drawing surface. The draw callback runs once against a canvas sized to the
+/// element; the recorded operators are clipped to and placed within the element's bounds.
+/// </summary>
+internal sealed class CanvasElement(double width, double height, Action<ICanvas> draw) : Element
+{
+    public override MeasureResult Measure(in LayoutConstraints constraints) =>
+        width <= constraints.AvailableWidth + 0.01 && height <= constraints.AvailableHeight + 0.01
+            ? MeasureResult.Complete(width, height)
+            : MeasureResult.Overflowing(width, height);
+
+    public override void Draw(DrawingContext context, in LayoutRect bounds)
+    {
+        var canvas = new CanvasWriter(width, height);
+        draw(canvas);
+        // A fixed-size canvas draws at its own size, top-left aligned, not stretched to the bounds.
+        context.DrawCanvasContent(new LayoutRect(bounds.X, bounds.Y, width, height), canvas.Content);
+    }
+}
+
+/// <summary>
+/// A scalable vector image parsed from SVG. Scales to the available width preserving the viewBox
+/// aspect ratio (like a raster image), then renders through the vector canvas.
+/// </summary>
+internal sealed class SvgElement(SvgImage image) : Element
+{
+    public override MeasureResult Measure(in LayoutConstraints constraints)
+    {
+        var width = double.IsInfinity(constraints.AvailableWidth) ? image.ViewWidth : constraints.AvailableWidth;
+        var height = width / image.Aspect;
+        return height <= constraints.AvailableHeight
+            ? MeasureResult.Complete(width, height)
+            : MeasureResult.Overflowing(width, height);
+    }
+
+    public override void Draw(DrawingContext context, in LayoutRect bounds)
+    {
+        var canvas = new CanvasWriter(bounds.Width, bounds.Height);
+        image.Render(canvas);
+        context.DrawCanvasContent(bounds, canvas.Content);
+    }
 }
 
 /// <summary>A horizontal rule filling the available width.</summary>

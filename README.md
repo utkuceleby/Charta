@@ -103,6 +103,20 @@ page.Footer().Text(t =>
 });
 ```
 
+### Vector graphics and SVG
+
+Draw vectors directly, or drop in an SVG (both managed, no extra dependency):
+
+```csharp
+page.Content().Width(150).Svg(File.ReadAllText("logo.svg"));
+
+page.Content().Canvas(300, 120, canvas =>
+{
+    canvas.Rectangle(10, 10, 80, 100).Fill(Color.FromHex(0x1E5AA8));
+    canvas.Circle(200, 60, 40).FillAndStroke(Color.White, Color.Black, 2);
+});
+```
+
 ### Digital signatures
 
 The optional [`Charta.Signing`](https://www.nuget.org/packages/Charta.Signing) add-on signs a

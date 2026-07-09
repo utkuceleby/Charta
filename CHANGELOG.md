@@ -5,6 +5,16 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.3.0]
+
+### Added
+
+- Vector graphics, all managed (no new dependency): a `Canvas(width, height, draw)` element with a
+  path/paint drawing API (lines, cubic Béziers, rectangles, circles, ellipses; fill, stroke,
+  fill-and-stroke), and `Svg(...)` / `SvgFile(...)` that render a practical SVG subset — paths,
+  rect/circle/ellipse/line/polyline/polygon, groups with transforms, and fill/stroke presentation —
+  scaled to the available width like a raster image.
+
 ## [1.2.0]
 
 ### Added

@@ -19,6 +19,7 @@ namespace Charta
         public static Charta.IContainer Bookmark(this Charta.IContainer container, string title) { }
         public static Charta.IContainer Border(this Charta.IContainer container, double thickness) { }
         public static Charta.IContainer Border(this Charta.IContainer container, double thickness, Charta.Color color) { }
+        public static void Canvas(this Charta.IContainer container, double width, double height, System.Action<Charta.ICanvas> draw) { }
         public static void Column(this Charta.IContainer container, System.Action<Charta.IColumnDescriptor> content) { }
         public static void Component(this Charta.IContainer container, Charta.IComponent component) { }
         public static Charta.IContainer Extend(this Charta.IContainer container) { }
@@ -41,6 +42,8 @@ namespace Charta
         public static void Row(this Charta.IContainer container, System.Action<Charta.IRowDescriptor> content) { }
         public static Charta.IContainer Section(this Charta.IContainer container, string name) { }
         public static Charta.IContainer SectionLink(this Charta.IContainer container, string sectionName) { }
+        public static void Svg(this Charta.IContainer container, string svgContent) { }
+        public static void SvgFile(this Charta.IContainer container, string filePath) { }
         public static void Table(this Charta.IContainer container, System.Action<Charta.ITableDescriptor> content) { }
         public static void Text(this Charta.IContainer container, System.Action<Charta.ITextContentDescriptor> content) { }
         public static Charta.ITextDescriptor Text(this Charta.IContainer container, string text) { }
@@ -65,6 +68,21 @@ namespace Charta
         public GenerationResult() { }
         public required System.Collections.Generic.IReadOnlyList<Charta.LayoutDiagnostic> Diagnostics { get; init; }
         public required int PageCount { get; init; }
+    }
+    public interface ICanvas
+    {
+        double Height { get; }
+        double Width { get; }
+        Charta.ICanvas Circle(double centerX, double centerY, double radius);
+        Charta.ICanvas Close();
+        Charta.ICanvas CurveTo(double control1X, double control1Y, double control2X, double control2Y, double endX, double endY);
+        Charta.ICanvas Ellipse(double centerX, double centerY, double radiusX, double radiusY);
+        void Fill(Charta.Color color);
+        void FillAndStroke(Charta.Color fillColor, Charta.Color strokeColor, double lineWidth = 1);
+        Charta.ICanvas LineTo(double x, double y);
+        Charta.ICanvas MoveTo(double x, double y);
+        Charta.ICanvas Rectangle(double x, double y, double width, double height);
+        void Stroke(Charta.Color color, double lineWidth = 1);
     }
     public interface IColumnDescriptor
     {
@@ -246,5 +264,14 @@ namespace Charta.Imaging
         public ImageFormatException() { }
         public ImageFormatException(string message) { }
         public ImageFormatException(string message, System.Exception innerException) { }
+    }
+}
+namespace Charta.Svg
+{
+    public sealed class SvgFormatException : System.Exception
+    {
+        public SvgFormatException() { }
+        public SvgFormatException(string message) { }
+        public SvgFormatException(string message, System.Exception innerException) { }
     }
 }

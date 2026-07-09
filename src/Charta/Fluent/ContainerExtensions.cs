@@ -225,6 +225,31 @@ public static class ContainerExtensions
         Impl(container).SetSource(descriptor.Build);
     }
 
+    /// <summary>
+    /// Fills the slot with a fixed-size vector drawing. The callback draws onto a canvas of the given
+    /// size in points, with a top-left origin. Content is clipped to the canvas bounds.
+    /// </summary>
+    public static void Canvas(this IContainer container, double width, double height, Action<ICanvas> draw)
+    {
+        ArgumentNullException.ThrowIfNull(draw);
+        Impl(container).SetSource(_ => new CanvasElement(width, height, draw));
+    }
+
+    /// <summary>Fills the slot with an SVG image, scaled to the available width preserving aspect ratio.</summary>
+    public static void Svg(this IContainer container, string svgContent)
+    {
+        ArgumentNullException.ThrowIfNull(svgContent);
+        var image = Charta.Svg.SvgImage.Parse(svgContent);
+        Impl(container).SetSource(_ => new SvgElement(image));
+    }
+
+    /// <summary>Fills the slot with an SVG image loaded from a file.</summary>
+    public static void SvgFile(this IContainer container, string filePath)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+        container.Svg(File.ReadAllText(filePath));
+    }
+
     /// <summary>Fills the slot with a table: defined columns, an optional repeating header, and cells.</summary>
     public static void Table(this IContainer container, Action<ITableDescriptor> content)
     {

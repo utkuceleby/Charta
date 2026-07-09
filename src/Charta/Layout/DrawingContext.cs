@@ -92,6 +92,21 @@ internal sealed class DrawingContext
         Append("Q");
     }
 
+    /// <summary>
+    /// Replays canvas path operators (authored in a local top-left coordinate space) inside a
+    /// transform that places the local origin at the top-left of <paramref name="rect"/> with y
+    /// growing downward, so the drawing code never converts coordinates itself.
+    /// </summary>
+    public void DrawCanvasContent(in LayoutRect rect, string localOps)
+    {
+        Append("q");
+        Append($"1 0 0 -1 {F(rect.X)} {F(_pageHeight - rect.Y)} cm");
+        // Clip to the canvas bounds so drawing cannot spill past its element.
+        Append($"0 0 {F(rect.Width)} {F(rect.Height)} re W n");
+        _ops.Append(localOps);
+        Append("Q");
+    }
+
     /// <summary>Runs <paramref name="draw"/> with output clipped to <paramref name="rect"/>.</summary>
     public void Clipped(in LayoutRect rect, Action draw)
     {
