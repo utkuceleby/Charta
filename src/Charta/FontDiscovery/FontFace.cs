@@ -1,3 +1,5 @@
+using Charta.Fonts;
+
 namespace Charta.FontDiscovery;
 
 /// <summary>One face inside a font file: identifying names plus where to load the bytes from.</summary>
@@ -20,6 +22,9 @@ internal sealed class FontFace
     public string? Path { get; init; }
 
     private readonly ReadOnlyMemory<byte> _data;
+    private readonly object _gate = new();
+    private ReadOnlyMemory<byte>? _loaded;
+    private SfntFont? _parsed;
 
     public FontFace()
     {
@@ -27,5 +32,28 @@ internal sealed class FontFace
 
     public FontFace(ReadOnlyMemory<byte> data) => _data = data;
 
-    public ReadOnlyMemory<byte> Load() => Path is null ? _data : File.ReadAllBytes(Path);
+    public ReadOnlyMemory<byte> Load()
+    {
+        if (Path is null)
+        {
+            return _data;
+        }
+
+        lock (_gate)
+        {
+            return _loaded ??= File.ReadAllBytes(Path);
+        }
+    }
+
+    /// <summary>
+    /// The parsed font, cached: SfntFont is immutable, so one parse serves every document.
+    /// Per-document state (glyph usage) lives in PdfFont, which wraps this.
+    /// </summary>
+    public SfntFont GetParsedFont()
+    {
+        lock (_gate)
+        {
+            return _parsed ??= SfntFont.Parse(Load(), CollectionIndex);
+        }
+    }
 }

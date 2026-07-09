@@ -24,6 +24,9 @@ internal sealed class PdfFont
     public static PdfFont Parse(ReadOnlyMemory<byte> fontData, int ttcIndex = 0) =>
         new(SfntFont.Parse(fontData, ttcIndex));
 
+    /// <summary>Wraps an already-parsed font: the parse is shared, the usage tracking is per document.</summary>
+    public static PdfFont FromParsed(SfntFont font) => new(font);
+
     public int UnitsPerEm => _font.UnitsPerEm;
 
     /// <summary>Typographic ascent as a fraction of the em size.</summary>

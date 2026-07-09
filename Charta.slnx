@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/Charta.Benchmarks/Charta.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/Charta.Examples/Charta.Examples.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Charta/Charta.csproj" />
   </Folder>

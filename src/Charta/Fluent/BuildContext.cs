@@ -71,7 +71,7 @@ internal sealed class BuildContext
     {
         if (!_fonts.TryGetValue(face, out var font))
         {
-            font = PdfFont.Parse(face.Load(), face.CollectionIndex);
+            font = PdfFont.FromParsed(face.GetParsedFont());
             _fonts[face] = font;
         }
 
