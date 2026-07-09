@@ -23,10 +23,17 @@ internal sealed class FontChain
 
     public IReadOnlyList<PdfFont> Fonts => _fonts;
 
-    /// <summary>Shapes the text into sequential segments, one per font switch.</summary>
-    public IReadOnlyList<FontRun> Shape(string text)
+    /// <summary>Shapes left-to-right text into sequential segments, one per font switch.</summary>
+    public IReadOnlyList<FontRun> Shape(string text) => ShapeRun(text, ShaperDirection.LeftToRight);
+
+    /// <summary>
+    /// Shapes a directional run into font segments in visual order. Text is in logical order; each
+    /// segment is shaped in the given direction (the shaper reverses right-to-left runs), and for
+    /// right-to-left the segment order itself is reversed so the whole run reads visually.
+    /// </summary>
+    public IReadOnlyList<FontRun> ShapeRun(string text, ShaperDirection direction)
     {
-        var runs = new List<FontRun>();
+        var segments = new List<(PdfFont Font, string Text)>();
         var segment = new StringBuilder();
         PdfFont? segmentFont = null;
 
@@ -35,7 +42,7 @@ internal sealed class FontChain
             var font = SelectFont(rune.Value);
             if (!ReferenceEquals(font, segmentFont) && segment.Length > 0)
             {
-                runs.Add(new FontRun(segmentFont!, segmentFont!.Shape(segment.ToString())));
+                segments.Add((segmentFont!, segment.ToString()));
                 segment.Clear();
             }
 
@@ -45,7 +52,18 @@ internal sealed class FontChain
 
         if (segment.Length > 0)
         {
-            runs.Add(new FontRun(segmentFont!, segmentFont!.Shape(segment.ToString())));
+            segments.Add((segmentFont!, segment.ToString()));
+        }
+
+        if (direction == ShaperDirection.RightToLeft)
+        {
+            segments.Reverse(); // visual order of font segments within a right-to-left run
+        }
+
+        var runs = new List<FontRun>(segments.Count);
+        foreach (var (font, segmentText) in segments)
+        {
+            runs.Add(new FontRun(font, font.ShapeRun(segmentText, direction)));
         }
 
         return runs;

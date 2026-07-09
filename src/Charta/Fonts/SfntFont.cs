@@ -239,6 +239,9 @@ internal sealed class SfntFont
             capHeight);
     }
 
+    /// <summary>The original font file bytes (or TTC slice) — needed by shapers that parse independently.</summary>
+    public ReadOnlyMemory<byte> RawData => _file;
+
     public bool TryGetTable(string tag, out ReadOnlyMemory<byte> table)
     {
         if (_tables.TryGetValue(tag, out var entry))

@@ -15,8 +15,6 @@ internal sealed class PdfFont
     private readonly SfntFont _font;
     private readonly SortedSet<ushort> _usedGlyphs = [0];
     private readonly SortedDictionary<ushort, string> _glyphText = [];
-    private GposKerning? _kerning;
-    private bool _kerningResolved;
     private bool _written;
 
     private PdfFont(SfntFont font) => _font = font;
@@ -41,44 +39,38 @@ internal sealed class PdfFont
     /// <summary>Glyph ID of the space character (0 when unmapped) — the stretch point for justification.</summary>
     public ushort SpaceGlyphId => _font.MapCodepoint(' ');
 
+    /// <summary>Shapes left-to-right text (the common path; also used by the fallback chain).</summary>
+    public ShapedText Shape(string text) => ShapeRun(text, ShaperDirection.LeftToRight);
+
     /// <summary>
-    /// Simple shaping: one glyph per codepoint via cmap, advances from hmtx, pair kerning from GPOS.
-    /// No substitution or bidi — those arrive with the shaping layer. Records glyph usage for subsetting.
+    /// Shapes a run in the given direction through the registered shaper (simple by default, HarfBuzz
+    /// when the add-on is present), records glyph usage for subsetting, and builds the ToUnicode
+    /// mapping from the shaper's cluster information (so ligatures still extract to their source text).
     /// </summary>
-    public ShapedText Shape(string text)
+    public ShapedText ShapeRun(string text, ShaperDirection direction)
     {
         if (_written)
         {
             throw new InvalidOperationException("The font has already been written; no further text can be shaped with it.");
         }
 
-        if (!_kerningResolved)
-        {
-            _kerning = GposKerning.TryCreate(_font);
-            _kerningResolved = true;
-        }
-
-        var glyphs = new List<ShapedGlyph>(text.Length);
+        var shaped = TextShaperRegistry.Current.Shape(_font, text, direction);
+        var glyphs = new List<ShapedGlyph>(shaped.Count);
         long widthFontUnits = 0;
-        foreach (var rune in text.EnumerateRunes())
-        {
-            var gid = _font.MapCodepoint(rune.Value);
-            if (glyphs.Count > 0 && _kerning is not null)
-            {
-                var kern = _kerning.GetAdjustment(glyphs[^1].GlyphId, gid);
-                if (kern != 0)
-                {
-                    glyphs[^1] = glyphs[^1] with { KernAfter = kern };
-                    widthFontUnits += kern;
-                }
-            }
 
-            glyphs.Add(new ShapedGlyph(gid, 0));
-            widthFontUnits += _font.AdvanceWidth(gid);
-            _usedGlyphs.Add(gid);
-            if (gid != 0)
+        foreach (var glyph in shaped)
+        {
+            glyphs.Add(new ShapedGlyph(glyph.GlyphId, glyph.AdvanceDelta, glyph.XOffset, glyph.YOffset));
+            widthFontUnits += _font.AdvanceWidth(glyph.GlyphId) + glyph.AdvanceDelta;
+            _usedGlyphs.Add(glyph.GlyphId);
+
+            if (glyph.GlyphId != 0 && glyph.ClusterLength > 0)
             {
-                _glyphText.TryAdd(gid, rune.ToString());
+                var end = Math.Min(glyph.ClusterStart + glyph.ClusterLength, text.Length);
+                if (glyph.ClusterStart >= 0 && glyph.ClusterStart < end)
+                {
+                    _glyphText.TryAdd(glyph.GlyphId, text[glyph.ClusterStart..end]);
+                }
             }
         }
 
@@ -201,8 +193,12 @@ internal sealed class PdfFont
     private static int EstimateStemV(ushort weightClass) => 10 + 220 * (Math.Clamp(weightClass, (ushort)100, (ushort)900) - 50) / 900;
 }
 
-/// <summary>One positioned glyph: its ID and the kerning adjustment (font units) applied after it.</summary>
-internal readonly record struct ShapedGlyph(ushort GlyphId, int KernAfter);
+/// <summary>
+/// One positioned glyph: its ID, the advance adjustment (font units) applied after it, and mark
+/// offsets that shift the glyph without moving the pen. Offsets are always zero from the simple
+/// shaper, so the left-to-right fast path stays byte-identical.
+/// </summary>
+internal readonly record struct ShapedGlyph(ushort GlyphId, int KernAfter, int XOffset = 0, int YOffset = 0);
 
 /// <summary>Result of shaping a text run: glyphs in visual order and the total advance in 1/1000 em.</summary>
 internal sealed class ShapedText(IReadOnlyList<ShapedGlyph> glyphs, double width, int unitsPerEm)

@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/Charta.Benchmarks/Charta.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/Charta.Examples/Charta.Examples.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Charta/Charta.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Charta.Smoke/Charta.Smoke.csproj" />
+    <Project Path="tests/Charta.Tests/Charta.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Charta.CodeGen/Charta.CodeGen.csproj" />
+  </Folder>
+</Solution>

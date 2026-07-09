@@ -304,13 +304,10 @@ internal sealed class TextElement : Element
 
         if (_hasRtl)
         {
-            foreach (var (text, style) in VisualGroups(start, end))
+            foreach (var (font, shaped, style) in VisualRuns(start, end))
             {
-                foreach (var fontRun in style.Fonts.Shape(text))
-                {
-                    runs.Add(new StyledRun(fontRun.Font, fontRun.Text, style));
-                    width += fontRun.Text.Width * style.FontSize / 1000;
-                }
+                runs.Add(new StyledRun(font, shaped, style));
+                width += shaped.Width * style.FontSize / 1000;
             }
         }
         else
@@ -422,11 +419,12 @@ internal sealed class TextElement : Element
     }
 
     /// <summary>
-    /// Visual-order style groups for one line: clusters (base + combining marks) reorder as units
-    /// (L3), mirrored codepoints swap in right-to-left runs (L4), and consecutive same-style
-    /// codepoints merge into one shaping group.
+    /// Shaped runs for one line in visual order. Text is split into maximal runs sharing a bidi level
+    /// and a style (logical order), the runs are ordered visually by rule L2, and each is shaped in
+    /// its direction — the shaper reverses and mirrors right-to-left runs (and joins them when the
+    /// HarfBuzz add-on is present). Formatting characters (removed levels) do not render.
     /// </summary>
-    private IEnumerable<(string Text, TextStyle Style)> VisualGroups(int start, int end)
+    private IEnumerable<(PdfFont Font, ShapedText Shaped, TextStyle Style)> VisualRuns(int start, int end)
     {
         var cpStart = _charToCodepoint[start];
         var cpEnd = _charToCodepoint[end];
@@ -435,54 +433,56 @@ internal sealed class TextElement : Element
             yield break;
         }
 
-        // Group into clusters: a base plus following combining marks (kept in logical order).
-        var clusterStarts = new List<int>();
-        var clusterLevels = new List<byte>();
+        // Build logical runs: consecutive rendered codepoints sharing a level and a style.
+        var runTexts = new List<string>();
+        var runLevels = new List<byte>();
+        var runStyles = new List<int>();
+        var builder = new System.Text.StringBuilder();
+        var currentLevel = (byte)0;
+        var currentStyle = -1;
+
+        void Flush()
+        {
+            if (builder.Length > 0)
+            {
+                runTexts.Add(builder.ToString());
+                runLevels.Add(currentLevel);
+                runStyles.Add(currentStyle);
+                builder.Clear();
+            }
+        }
+
         for (var cp = cpStart; cp < cpEnd; cp++)
         {
-            if (cp > cpStart && UnicodeBidi.GetClass(_codepoints[cp]) == BidiClass.NSM &&
-                _bidiLevels[cp] != BidiAlgorithm.RemovedLevel)
+            var level = _bidiLevels[cp];
+            if (level == BidiAlgorithm.RemovedLevel)
             {
-                continue; // belongs to the previous cluster
+                continue;
             }
 
-            clusterStarts.Add(cp);
-            clusterLevels.Add(_bidiLevels[cp]);
-        }
-
-        var visual = BidiAlgorithm.ReorderLine([.. clusterLevels], 0, clusterLevels.Count);
-
-        var groupText = new System.Text.StringBuilder();
-        var groupStyle = -1;
-        foreach (var clusterIndex in visual)
-        {
-            var clusterStart = clusterStarts[clusterIndex];
-            var clusterEnd = clusterIndex + 1 < clusterStarts.Count ? clusterStarts[clusterIndex + 1] : cpEnd;
-            var level = clusterLevels[clusterIndex];
-
-            for (var cp = clusterStart; cp < clusterEnd; cp++)
+            var style = _charStyleIndex[CharIndexOf(cp)];
+            if (builder.Length > 0 && (level != currentLevel || style != currentStyle))
             {
-                if (_bidiLevels[cp] == BidiAlgorithm.RemovedLevel)
-                {
-                    continue; // formatting characters are not rendered
-                }
-
-                var style = _charStyleIndex[CharIndexOf(cp)];
-                if (style != groupStyle && groupText.Length > 0)
-                {
-                    yield return (groupText.ToString(), _spans[groupStyle].Style);
-                    groupText.Clear();
-                }
-
-                groupStyle = style;
-                var value = level % 2 == 1 ? UnicodeBidi.GetMirror(_codepoints[cp]) : _codepoints[cp];
-                groupText.Append(char.ConvertFromUtf32(value));
+                Flush();
             }
+
+            currentLevel = level;
+            currentStyle = style;
+            builder.Append(char.ConvertFromUtf32(_codepoints[cp]));
         }
 
-        if (groupText.Length > 0)
+        Flush();
+
+        // L2: order the runs visually by their levels.
+        var visual = BidiAlgorithm.ReorderLine([.. runLevels], 0, runLevels.Count);
+        foreach (var runIndex in visual)
         {
-            yield return (groupText.ToString(), _spans[groupStyle].Style);
+            var style = _spans[runStyles[runIndex]].Style;
+            var direction = runLevels[runIndex] % 2 == 1 ? ShaperDirection.RightToLeft : ShaperDirection.LeftToRight;
+            foreach (var fontRun in style.Fonts.ShapeRun(runTexts[runIndex], direction))
+            {
+                yield return (fontRun.Font, fontRun.Text, style);
+            }
         }
     }
 
