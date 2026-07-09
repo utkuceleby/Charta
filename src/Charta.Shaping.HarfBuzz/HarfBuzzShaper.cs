@@ -95,6 +95,8 @@ internal sealed class HarfBuzzShaper : ITextShaper
     /// </summary>
     private sealed class HarfBuzzFont : IDisposable
     {
+        private readonly byte[] _data; // pinned for the blob's lifetime so HarfBuzz's pointer stays valid
+        private readonly System.Runtime.InteropServices.GCHandle _handle;
         private readonly Blob _blob;
         private readonly Face _face;
 
@@ -102,8 +104,12 @@ internal sealed class HarfBuzzShaper : ITextShaper
 
         public HarfBuzzFont(SfntFont font)
         {
-            var data = font.RawData.ToArray();
-            _blob = Blob.FromStream(new MemoryStream(data, writable: false));
+            // Retain and pin the font bytes: HarfBuzz keeps a pointer into this memory, so it must
+            // not move or be collected. A dangling pointer here is a native crash (seen only under
+            // GC pressure on some runners), so ownership is explicit rather than left to Blob copies.
+            _data = font.RawData.ToArray();
+            _handle = System.Runtime.InteropServices.GCHandle.Alloc(_data, System.Runtime.InteropServices.GCHandleType.Pinned);
+            _blob = new Blob(_handle.AddrOfPinnedObject(), _data.Length, MemoryMode.ReadOnly);
             _face = new Face(_blob, 0);
             _face.UnitsPerEm = font.UnitsPerEm;
             Font = new global::HarfBuzzSharp.Font(_face);
@@ -116,6 +122,10 @@ internal sealed class HarfBuzzShaper : ITextShaper
             Font.Dispose();
             _face.Dispose();
             _blob.Dispose();
+            if (_handle.IsAllocated)
+            {
+                _handle.Free();
+            }
         }
     }
 }

@@ -7,7 +7,7 @@
 
   <PropertyGroup>
     <PackageId>Charta.Shaping.HarfBuzz</PackageId>
-    <Version>1.1.0</Version>
+    <Version>1.5.0</Version>
     <Authors>Utku Celebi</Authors>
     <Description>HarfBuzz text shaping for Charta: correct cursive joining and mark positioning for Arabic, Indic, and other complex scripts. Reference this package and call ChartaHarfBuzz.Register().</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
