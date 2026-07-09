@@ -41,6 +41,7 @@ namespace Charta
         public static void Row(this Charta.IContainer container, System.Action<Charta.IRowDescriptor> content) { }
         public static Charta.IContainer Section(this Charta.IContainer container, string name) { }
         public static Charta.IContainer SectionLink(this Charta.IContainer container, string sectionName) { }
+        public static void Table(this Charta.IContainer container, System.Action<Charta.ITableDescriptor> content) { }
         public static Charta.ITextDescriptor Text(this Charta.IContainer container, string text) { }
         public static Charta.IContainer Width(this Charta.IContainer container, double value) { }
     }
@@ -105,6 +106,26 @@ namespace Charta
         Charta.IContainer ConstantItem(double width);
         Charta.IContainer RelativeItem(double weight = 1);
         void Spacing(double value);
+    }
+    public interface ITableCellDescriptor : Charta.IContainer
+    {
+        Charta.ITableCellDescriptor ColumnSpan(int columns);
+        Charta.ITableCellDescriptor RowSpan(int rows);
+    }
+    public interface ITableColumnsDescriptor
+    {
+        void ConstantColumn(double width);
+        void RelativeColumn(double weight = 1);
+    }
+    public interface ITableDescriptor
+    {
+        Charta.ITableCellDescriptor Cell();
+        void ColumnsDefinition(System.Action<Charta.ITableColumnsDescriptor> columns);
+        void Header(System.Action<Charta.ITableHeaderDescriptor> header);
+    }
+    public interface ITableHeaderDescriptor
+    {
+        Charta.ITableCellDescriptor Cell();
     }
     public interface ITextDescriptor
     {

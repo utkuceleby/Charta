@@ -10,7 +10,12 @@ public static class ContainerExtensions
     private static ContainerImpl Impl(IContainer container)
     {
         ArgumentNullException.ThrowIfNull(container);
-        return (ContainerImpl)container;
+        return container switch
+        {
+            ContainerImpl impl => impl,
+            TableCellDescriptor cell => cell.Container,
+            _ => throw new ArgumentException($"Unsupported container implementation: {container.GetType().Name}.", nameof(container)),
+        };
     }
 
     /// <summary>Insets the content on all four sides, in points.</summary>
@@ -205,6 +210,15 @@ public static class ContainerExtensions
     {
         ArgumentNullException.ThrowIfNull(content);
         var descriptor = new LayersDescriptor();
+        content(descriptor);
+        Impl(container).SetSource(descriptor.Build);
+    }
+
+    /// <summary>Fills the slot with a table: defined columns, an optional repeating header, and cells.</summary>
+    public static void Table(this IContainer container, Action<ITableDescriptor> content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var descriptor = new TableDescriptor();
         content(descriptor);
         Impl(container).SetSource(descriptor.Build);
     }

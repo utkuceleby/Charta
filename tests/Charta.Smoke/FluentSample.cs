@@ -50,6 +50,24 @@ internal static class FluentSample
                     col.Item().Border(1).Padding(8).AlignCenter().Text("CCC").FontSize(14);
                     col.Item().PageBreak();
                     col.Item().Section("end").Bookmark("End").Text("BBB").LineSpacing(1.5);
+                    col.Item().Table(table =>
+                    {
+                        table.ColumnsDefinition(cols =>
+                        {
+                            cols.ConstantColumn(120);
+                            cols.RelativeColumn();
+                            cols.RelativeColumn();
+                        });
+                        table.Header(header =>
+                        {
+                            header.Cell().Background(Color.FromHex(0xDDDDDD)).Padding(4).Text("CA").FontSize(10);
+                            header.Cell().ColumnSpan(2).Background(Color.FromHex(0xDDDDDD)).Padding(4).Text("CB").FontSize(10);
+                        });
+                        table.Cell().RowSpan(2).Padding(4).Text("AC").FontSize(10);
+                        table.Cell().Padding(4).Text("BA").FontSize(10);
+                        table.Cell().Padding(4).Text("BC").FontSize(10);
+                        table.Cell().ColumnSpan(2).Background(Color.FromHex(0xF5F5F5)).Padding(4).Text("CC").FontSize(10);
+                    });
                 });
 
                 page.Footer().AlignCenter().Text("ABC").FontSize(9);

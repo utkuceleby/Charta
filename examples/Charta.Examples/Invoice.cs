@@ -50,33 +50,35 @@ public static class Invoice
 
                     col.Item().PaddingVertical(6).Text("Bill to: Acme Corporation, Rocket Road 1, 10115 Berlin").FontSize(10);
 
-                    // Table header.
-                    col.Item().Background(accent).Padding(6).Row(row =>
+                    // The item table: a repeating header band and zebra-striped rows.
+                    col.Item().Table(table =>
                     {
-                        row.RelativeItem(6).Text("Description").FontColor(Color.White).Bold().FontSize(10);
-                        row.RelativeItem(1).AlignRight().Text("Qty").FontColor(Color.White).Bold().FontSize(10);
-                        row.RelativeItem(2).AlignRight().Text("Unit").FontColor(Color.White).Bold().FontSize(10);
-                        row.RelativeItem(2).AlignRight().Text("Total").FontColor(Color.White).Bold().FontSize(10);
-                    });
-
-                    // Item rows with zebra striping.
-                    for (var i = 0; i < items.Length; i++)
-                    {
-                        var item = items[i];
-                        var rowContainer = col.Item();
-                        if (i % 2 == 1)
+                        table.ColumnsDefinition(cols =>
                         {
-                            rowContainer = rowContainer.Background(lightGrey);
-                        }
-
-                        rowContainer.Padding(6).Row(row =>
-                        {
-                            row.RelativeItem(6).Text(item.Description).FontSize(10);
-                            row.RelativeItem(1).AlignRight().Text($"{item.Quantity}").FontSize(10);
-                            row.RelativeItem(2).AlignRight().Text($"{item.UnitPrice:N2} €").FontSize(10);
-                            row.RelativeItem(2).AlignRight().Text($"{item.Total:N2} €").FontSize(10);
+                            cols.RelativeColumn(6);
+                            cols.RelativeColumn(1);
+                            cols.RelativeColumn(2);
+                            cols.RelativeColumn(2);
                         });
-                    }
+
+                        table.Header(header =>
+                        {
+                            header.Cell().Background(accent).Padding(6).Text("Description").FontColor(Color.White).Bold().FontSize(10);
+                            header.Cell().Background(accent).Padding(6).AlignRight().Text("Qty").FontColor(Color.White).Bold().FontSize(10);
+                            header.Cell().Background(accent).Padding(6).AlignRight().Text("Unit").FontColor(Color.White).Bold().FontSize(10);
+                            header.Cell().Background(accent).Padding(6).AlignRight().Text("Total").FontColor(Color.White).Bold().FontSize(10);
+                        });
+
+                        for (var i = 0; i < items.Length; i++)
+                        {
+                            var item = items[i];
+                            var zebra = i % 2 == 1 ? lightGrey : Color.White;
+                            table.Cell().Background(zebra).Padding(6).Text(item.Description).FontSize(10);
+                            table.Cell().Background(zebra).Padding(6).AlignRight().Text($"{item.Quantity}").FontSize(10);
+                            table.Cell().Background(zebra).Padding(6).AlignRight().Text($"{item.UnitPrice:N2} €").FontSize(10);
+                            table.Cell().Background(zebra).Padding(6).AlignRight().Text($"{item.Total:N2} €").FontSize(10);
+                        }
+                    });
 
                     col.Item().LineHorizontal(1, accent);
 
