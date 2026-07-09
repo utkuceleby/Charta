@@ -39,26 +39,31 @@ public sealed class Document
         return new Document(describe);
     }
 
-    /// <summary>Generates the PDF into a stream. Pages are flushed as they finish; memory stays flat.</summary>
-    public GenerationResult GeneratePdf(Stream output, PdfSaveOptions? options = null)
+    /// <summary>
+    /// Generates the PDF into a stream. Pages are flushed as they finish; memory stays flat.
+    /// Cancellation is checked before each page — a canceled generation leaves a truncated,
+    /// invalid file in the stream.
+    /// </summary>
+    public GenerationResult GeneratePdf(Stream output, PdfSaveOptions? options = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(output);
         return Generate(
             output,
             new PdfWriterOptions { CompressStreams = options?.Compress ?? true },
-            options?.Overflow ?? OverflowBehavior.Clip);
+            options?.Overflow ?? OverflowBehavior.Clip,
+            cancellationToken);
     }
 
     /// <summary>Generates the PDF into a file.</summary>
-    public GenerationResult GeneratePdf(string filePath, PdfSaveOptions? options = null)
+    public GenerationResult GeneratePdf(string filePath, PdfSaveOptions? options = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(filePath);
         using var file = File.Create(filePath);
-        return GeneratePdf(file, options);
+        return GeneratePdf(file, options, cancellationToken);
     }
 
     /// <summary>Test seam: full control over writer options (xref mode, compression).</summary>
-    internal GenerationResult Generate(Stream output, PdfWriterOptions writerOptions, OverflowBehavior overflow)
+    internal GenerationResult Generate(Stream output, PdfWriterOptions writerOptions, OverflowBehavior overflow, CancellationToken cancellationToken = default)
     {
         var descriptor = new DocumentDescriptor();
         using (DescriptionScope.Begin(descriptor))
@@ -78,12 +83,12 @@ public sealed class Document
             var countingContext = new BuildContext();
             var countingSections = descriptor.Pages.Select(page => page.Build(countingContext)).ToList();
             totalPages = LayoutDocument
-                .Generate(Stream.Null, countingSections, overflow, writerOptions, metadata: null)
+                .Generate(Stream.Null, countingSections, overflow, writerOptions, metadata: null, cancellationToken)
                 .PageCount;
         }
 
         var context = new BuildContext { TotalPages = totalPages };
         var sections = descriptor.Pages.Select(page => page.Build(context)).ToList();
-        return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata);
+        return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata, cancellationToken);
     }
 }

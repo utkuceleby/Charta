@@ -1,10 +1,11 @@
 # Changelog
 
 All notable changes to Charta are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/)
-(0.x releases may still change the API — every change shows up in the public API approval file).
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
+From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
+file, and breaking changes require a major version.
 
-## [Unreleased]
+## [1.0.0]
 
 ### Added
 
@@ -20,10 +21,17 @@ All notable changes to Charta are documented here. The format follows
   policy (clip + diagnostics; opt-in `Throw`), anti-hang circuit breakers, streaming page loop with
   flat memory, repeating header/footer bands.
 - UAX#14 line breaking (Unicode 16.0), 100% conformant with the official test suite.
+- UAX#9 bidirectional algorithm (Unicode 16.0), 100% conformant with both official test suites:
+  Hebrew and mixed-direction text render and extract correctly, brackets mirror in RTL runs, and
+  Arabic reading order is correct (letter joining ships later in the HarfBuzz add-on package).
+- Tables: constant/relative columns, repeating headers, column and row spans with band pagination —
+  spanned rows stay together, oversized bands clip with a diagnostic and the table continues.
+- Rich text: styled spans in one paragraph, block alignment (left/center/right/justify),
+  underline/strikethrough, per-page `CurrentPageNumber()` and `TotalPages()` (counting pre-pass).
 - Fluent API: `Document.Create`, container extensions (padding, background, border, alignment,
-  constraints, column, row, text, image, rules, page breaks, extend, layers), text styling,
+  constraints, column, row, table, text, image, rules, page breaks, extend, layers), text styling,
   `IComponent`, hyperlinks, sections/internal links, outline bookmarks, document metadata
-  (Info + XMP).
+  (Info + XMP), `CancellationToken` support.
 - Public API surface locked by an approval test.
 - Benchmarks against QuestPDF and MigraDoc/PDFsharp (see `benchmarks/README.md`) and an examples
   gallery (`examples/`).

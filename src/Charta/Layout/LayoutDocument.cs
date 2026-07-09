@@ -58,7 +58,8 @@ internal sealed class LayoutDocument
         IReadOnlyList<PageSection> sections,
         OverflowBehavior overflowBehavior,
         PdfWriterOptions? options = null,
-        DocumentMetadata? metadata = null)
+        DocumentMetadata? metadata = null,
+        CancellationToken cancellationToken = default)
     {
         using var writer = new PdfWriter(output, options);
         writer.WriteHeader();
@@ -73,7 +74,7 @@ internal sealed class LayoutDocument
 
         foreach (var section in sections)
         {
-            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation);
+            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation, cancellationToken);
             if (pageRefs.Count >= MaxPages)
             {
                 break;
@@ -252,7 +253,8 @@ internal sealed class LayoutDocument
         List<CosReference> pageRefs,
         List<LayoutDiagnostic> diagnostics,
         OverflowBehavior overflowBehavior,
-        NavigationCollector navigation)
+        NavigationCollector navigation,
+        CancellationToken cancellationToken)
     {
         var contentBox = new LayoutRect(
             section.Margin,
@@ -262,6 +264,7 @@ internal sealed class LayoutDocument
 
         while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var pageNumber = pageRefs.Count + 1;
             var context = new DrawingContext(resources, section.PageSize.Height, pageNumber, overflowBehavior, diagnostics, navigation);
 

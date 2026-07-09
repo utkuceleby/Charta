@@ -48,8 +48,8 @@ namespace Charta
     }
     public sealed class Document
     {
-        public Charta.GenerationResult GeneratePdf(System.IO.Stream output, Charta.PdfSaveOptions? options = null) { }
-        public Charta.GenerationResult GeneratePdf(string filePath, Charta.PdfSaveOptions? options = null) { }
+        public Charta.GenerationResult GeneratePdf(System.IO.Stream output, Charta.PdfSaveOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public Charta.GenerationResult GeneratePdf(string filePath, Charta.PdfSaveOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
         public static Charta.Document Create(System.Action<Charta.IDocumentDescriptor> describe) { }
     }
     public static class FontManager

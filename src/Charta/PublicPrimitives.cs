@@ -75,7 +75,7 @@ public enum OverflowBehavior
     Throw,
 }
 
-/// <summary>Options for <see cref="Document.GeneratePdf(Stream, PdfSaveOptions?)"/>.</summary>
+/// <summary>Options for <see cref="Document.GeneratePdf(Stream, PdfSaveOptions?, CancellationToken)"/>.</summary>
 public sealed class PdfSaveOptions
 {
     /// <summary>Compress content streams with Flate. On by default; disable for byte-level debugging.</summary>

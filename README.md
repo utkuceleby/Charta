@@ -2,7 +2,7 @@
 
 A permanently-MIT PDF generation library for .NET — fluent layout API, zero native dependencies, streaming output, NativeAOT-ready.
 
-> **Status: pre-release.** The fluent API below works today; the surface may still shift before `0.1` ships on NuGet.
+**Why Charta?** Every free .NET PDF option forces a trade-off: the modern fluent engine is revenue-gated, the permissive veteran has no layout engine or text shaping, the feature king is AGPL. Charta is MIT forever — no revenue thresholds, no dual-license switch — with a 166KB package that depends on nothing but the BCL.
 
 ## Quick start
 
@@ -48,6 +48,71 @@ Fonts resolve against explicitly registered files first (`FontManager.RegisterFo
 ## Why another PDF library?
 
 Every free .NET PDF option forces a trade-off: a modern fluent layout engine is revenue-gated, the permissively-licensed veteran has no modern layout engine or text shaping, and the most feature-complete library is AGPL. Charta aims to close that gap: a document generation engine that is MIT forever, has no revenue thresholds, no native binary payload in the core package, and treats digital signatures, complex-script text, and PDF/A + PDF/UA compliance as first-class free features.
+
+## Cookbook
+
+### Tables
+
+```csharp
+page.Content().Table(table =>
+{
+    table.ColumnsDefinition(cols =>
+    {
+        cols.RelativeColumn(3);
+        cols.ConstantColumn(80);
+        cols.RelativeColumn();
+    });
+    table.Header(header =>            // repeats at the top of every page
+    {
+        header.Cell().Background(Color.FromHex(0x1E5AA8)).Padding(6)
+              .Text("Product").FontColor(Color.White).Bold();
+        // ...
+    });
+    foreach (var row in rows)
+    {
+        table.Cell().Padding(6).Text(row.Name);
+        table.Cell().Padding(6).AlignRight().Text($"{row.Qty}");
+        table.Cell().Padding(6).AlignRight().Text($"{row.Total:N2}");
+    }
+});
+```
+
+Cells are ordinary containers (`Padding`, `Background`, `Border`, … all work) and support
+`ColumnSpan`/`RowSpan`. Rows joined by a rowspan paginate as one unbreakable band.
+
+### Page numbers and rich text
+
+```csharp
+page.Footer().Text(t =>
+{
+    t.AlignCenter();
+    t.Span("Page ").FontSize(9);
+    t.CurrentPageNumber().FontSize(9).Bold();
+    t.Span(" of ").FontSize(9);
+    t.TotalPages().FontSize(9);       // triggers an automatic counting pass
+});
+```
+
+### Fonts on servers and in Docker
+
+Register fonts explicitly — output becomes reproducible and independent of what the host has
+installed. Registered fonts are always subset and embedded:
+
+```csharp
+FontManager.RegisterFontFile("fonts/Inter-Regular.ttf");
+FontManager.RegisterFontFile("fonts/Inter-Bold.ttf");
+// The first registered family is also the default when no FontFamily(...) is set.
+```
+
+Without registration Charta falls back to OS fonts (Windows font directory, fontconfig on Linux,
+macOS font folders — no native calls).
+
+### When something doesn't fit
+
+Charta never throws for layout problems. Content that cannot fit even a full page is clipped and
+reported in `result.Diagnostics` with what/where/why; treat a non-empty list as a warning in
+development and log it in production. Prefer exceptions in CI? Opt in with
+`new PdfSaveOptions { Overflow = OverflowBehavior.Throw }`.
 
 ## Design principles
 
