@@ -17,6 +17,11 @@ internal static class FluentSample
 
         return Document.Create(doc =>
         {
+            doc.Metadata(m => m
+                .Title("Charta Fluent Sample")
+                .Author("Charta Tests")
+                .CreationDate(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
+
             doc.Page(page =>
             {
                 page.Size(PageSizes.A4);
@@ -32,7 +37,9 @@ internal static class FluentSample
                 page.Content().Column(col =>
                 {
                     col.Spacing(10);
-                    col.Item().Text("AB AB AB AB AB AB AB AB");
+                    col.Item().Bookmark("Intro").Text("AB AB AB AB AB AB AB AB");
+                    col.Item().Hyperlink("https://example.com/charta").Text("CAB");
+                    col.Item().SectionLink("end").Text("ABC");
                     col.Item().LineHorizontal(1.5);
                     col.Item()
                         .Background(Color.FromHex(0xE6E6E6))
@@ -42,7 +49,7 @@ internal static class FluentSample
                         .FontColor(Color.FromHex(0x333333));
                     col.Item().Border(1).Padding(8).AlignCenter().Text("CCC").FontSize(14);
                     col.Item().PageBreak();
-                    col.Item().Text("BBB").LineSpacing(1.5);
+                    col.Item().Section("end").Bookmark("End").Text("BBB").LineSpacing(1.5);
                 });
 
                 page.Footer().AlignCenter().Text("ABC").FontSize(9);

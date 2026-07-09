@@ -4,11 +4,39 @@ using Charta.Layout.Elements;
 
 namespace Charta;
 
-/// <summary>Describes the document: one or more page runs.</summary>
+/// <summary>Describes the document: one or more page runs plus document properties.</summary>
 public interface IDocumentDescriptor
 {
     /// <summary>Adds a run of pages sharing a size, margins, and repeating header/footer bands.</summary>
     void Page(Action<IPageDescriptor> configure);
+
+    /// <summary>Sets document properties (Info dictionary and XMP metadata).</summary>
+    void Metadata(Action<IMetadataDescriptor> configure);
+}
+
+/// <summary>Document properties. Unset values are omitted from the output.</summary>
+public interface IMetadataDescriptor
+{
+    /// <summary>Document title.</summary>
+    IMetadataDescriptor Title(string title);
+
+    /// <summary>Document author.</summary>
+    IMetadataDescriptor Author(string author);
+
+    /// <summary>Document subject/description.</summary>
+    IMetadataDescriptor Subject(string subject);
+
+    /// <summary>Keywords, comma-separated by convention.</summary>
+    IMetadataDescriptor Keywords(string keywords);
+
+    /// <summary>The application that created the original content.</summary>
+    IMetadataDescriptor Creator(string creator);
+
+    /// <summary>
+    /// Creation timestamp. Charta never reads the system clock — set this explicitly, or leave it
+    /// unset for byte-identical output across runs.
+    /// </summary>
+    IMetadataDescriptor CreationDate(DateTimeOffset timestamp);
 }
 
 /// <summary>Describes one page run.</summary>

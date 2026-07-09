@@ -16,11 +16,13 @@ namespace Charta
         public static Charta.IContainer AlignLeft(this Charta.IContainer container) { }
         public static Charta.IContainer AlignRight(this Charta.IContainer container) { }
         public static Charta.IContainer Background(this Charta.IContainer container, Charta.Color color) { }
+        public static Charta.IContainer Bookmark(this Charta.IContainer container, string title) { }
         public static Charta.IContainer Border(this Charta.IContainer container, double thickness) { }
         public static Charta.IContainer Border(this Charta.IContainer container, double thickness, Charta.Color color) { }
         public static void Column(this Charta.IContainer container, System.Action<Charta.IColumnDescriptor> content) { }
         public static void Component(this Charta.IContainer container, Charta.IComponent component) { }
         public static Charta.IContainer Height(this Charta.IContainer container, double value) { }
+        public static Charta.IContainer Hyperlink(this Charta.IContainer container, string url) { }
         public static void Image(this Charta.IContainer container, byte[] imageData) { }
         public static void Image(this Charta.IContainer container, string filePath) { }
         public static void LineHorizontal(this Charta.IContainer container, double thickness) { }
@@ -35,6 +37,8 @@ namespace Charta
         public static Charta.IContainer PaddingVertical(this Charta.IContainer container, double value) { }
         public static void PageBreak(this Charta.IContainer container) { }
         public static void Row(this Charta.IContainer container, System.Action<Charta.IRowDescriptor> content) { }
+        public static Charta.IContainer Section(this Charta.IContainer container, string name) { }
+        public static Charta.IContainer SectionLink(this Charta.IContainer container, string sectionName) { }
         public static Charta.ITextDescriptor Text(this Charta.IContainer container, string text) { }
         public static Charta.IContainer Width(this Charta.IContainer container, double value) { }
     }
@@ -68,7 +72,17 @@ namespace Charta
     public interface IContainer { }
     public interface IDocumentDescriptor
     {
+        void Metadata(System.Action<Charta.IMetadataDescriptor> configure);
         void Page(System.Action<Charta.IPageDescriptor> configure);
+    }
+    public interface IMetadataDescriptor
+    {
+        Charta.IMetadataDescriptor Author(string author);
+        Charta.IMetadataDescriptor CreationDate(System.DateTimeOffset timestamp);
+        Charta.IMetadataDescriptor Creator(string creator);
+        Charta.IMetadataDescriptor Keywords(string keywords);
+        Charta.IMetadataDescriptor Subject(string subject);
+        Charta.IMetadataDescriptor Title(string title);
     }
     public interface IPageDescriptor
     {

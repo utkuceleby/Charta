@@ -160,4 +160,36 @@ public static class ContainerExtensions
         ArgumentNullException.ThrowIfNull(component);
         component.Compose(container);
     }
+
+    /// <summary>Makes the content a clickable link to an external URL.</summary>
+    public static IContainer Hyperlink(this IContainer container, string url)
+    {
+        ArgumentNullException.ThrowIfNull(url);
+        Impl(container).AddWrapper((_, e) => new HyperlinkElement(e, url));
+        return container;
+    }
+
+    /// <summary>Marks the content's position as a named target for <see cref="SectionLink"/>.</summary>
+    public static IContainer Section(this IContainer container, string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        Impl(container).AddWrapper((_, e) => new SectionElement(e, name, bookmarkTitle: null));
+        return container;
+    }
+
+    /// <summary>Makes the content a clickable link to a <see cref="Section"/> in the same document.</summary>
+    public static IContainer SectionLink(this IContainer container, string sectionName)
+    {
+        ArgumentNullException.ThrowIfNull(sectionName);
+        Impl(container).AddWrapper((_, e) => new SectionLinkElement(e, sectionName));
+        return container;
+    }
+
+    /// <summary>Adds the content's position to the PDF outline (bookmarks panel).</summary>
+    public static IContainer Bookmark(this IContainer container, string title)
+    {
+        ArgumentNullException.ThrowIfNull(title);
+        Impl(container).AddWrapper((_, e) => new SectionElement(e, "bookmark:" + title, title));
+        return container;
+    }
 }

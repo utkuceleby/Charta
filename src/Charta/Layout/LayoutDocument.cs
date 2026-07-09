@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text;
 using Charta.Cos;
+using Charta.Metadata;
 
 namespace Charta.Layout;
 
@@ -55,7 +57,8 @@ internal sealed class LayoutDocument
         Stream output,
         IReadOnlyList<PageSection> sections,
         OverflowBehavior overflowBehavior,
-        PdfWriterOptions? options = null)
+        PdfWriterOptions? options = null,
+        DocumentMetadata? metadata = null)
     {
         using var writer = new PdfWriter(output, options);
         writer.WriteHeader();
@@ -66,10 +69,11 @@ internal sealed class LayoutDocument
         var resources = new PageResources(writer);
         var diagnostics = new List<LayoutDiagnostic>();
         var pageRefs = new List<CosReference>();
+        var navigation = new NavigationCollector();
 
         foreach (var section in sections)
         {
-            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior);
+            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation);
             if (pageRefs.Count >= MaxPages)
             {
                 break;
@@ -98,15 +102,145 @@ internal sealed class LayoutDocument
             [CosNames.Type] = CosNames.Catalog,
             [CosNames.Pages] = pagesRef,
         };
-        writer.WriteObject(catalogRef, catalog);
 
-        writer.WriteTrailer(catalogRef);
+        WriteNavigation(writer, catalog, navigation, pageRefs, diagnostics);
+
+        CosReference? infoRef = null;
+        if (metadata is { HasAnyValue: true })
+        {
+            var xmpRef = writer.Allocate();
+            var xmp = new CosStream(XmpWriter.Build(metadata)) { AllowCompression = false };
+            xmp.Dictionary[CosNames.Type] = CosNames.Metadata;
+            xmp.Dictionary[CosNames.Subtype] = CosNames.Xml;
+            writer.WriteObject(xmpRef, xmp);
+            catalog[CosNames.Metadata] = xmpRef;
+
+            infoRef = writer.Allocate();
+            writer.WriteObject(infoRef, BuildInfoDictionary(metadata));
+        }
+
+        writer.WriteObject(catalogRef, catalog);
+        writer.WriteTrailer(catalogRef, infoRef);
 
         return new GenerationResult
         {
             PageCount = pageRefs.Count,
             Diagnostics = diagnostics,
         };
+    }
+
+    private static void WriteNavigation(
+        PdfWriter writer,
+        CosDictionary catalog,
+        NavigationCollector navigation,
+        List<CosReference> pageRefs,
+        List<LayoutDiagnostic> diagnostics)
+    {
+        if (navigation.Destinations.Count > 0)
+        {
+            // Name tree with a single leaf node: sorted (name, destination) pairs.
+            var names = new CosArray();
+            foreach (var (name, target) in navigation.Destinations.OrderBy(p => p.Key, StringComparer.Ordinal))
+            {
+                names.Add(CosString.FromText(name));
+                names.Add(MakeDestination(pageRefs, target.PageIndex, target.Top));
+            }
+
+            var dests = new CosDictionary { [CosNames.Names] = names };
+            catalog[CosNames.Names] = new CosDictionary { [CosNames.Dests] = dests };
+        }
+
+        if (navigation.Bookmarks.Count > 0)
+        {
+            var outlinesRef = writer.Allocate();
+            var itemRefs = navigation.Bookmarks.Select(_ => writer.Allocate()).ToList();
+
+            for (var i = 0; i < navigation.Bookmarks.Count; i++)
+            {
+                var (title, pageIndex, top) = navigation.Bookmarks[i];
+                var item = new CosDictionary
+                {
+                    [CosNames.Title] = CosString.FromText(title),
+                    [CosNames.Parent] = outlinesRef,
+                    [CosNames.Dest] = MakeDestination(pageRefs, pageIndex, top),
+                };
+                if (i > 0)
+                {
+                    item[CosNames.Prev] = itemRefs[i - 1];
+                }
+
+                if (i < itemRefs.Count - 1)
+                {
+                    item[CosNames.Next] = itemRefs[i + 1];
+                }
+
+                writer.WriteObject(itemRefs[i], item);
+            }
+
+            var outlines = new CosDictionary
+            {
+                [CosNames.Type] = CosNames.Outlines,
+                [CosNames.First] = itemRefs[0],
+                [CosNames.Last] = itemRefs[^1],
+                [CosNames.Count] = new CosInteger(itemRefs.Count),
+            };
+            writer.WriteObject(outlinesRef, outlines);
+            catalog[CosNames.Outlines] = outlinesRef;
+        }
+
+        _ = diagnostics; // unresolved SectionLink names are reported at annotation time
+    }
+
+    private static CosArray MakeDestination(List<CosReference> pageRefs, int pageIndex, double top) =>
+        new(
+            pageRefs[Math.Clamp(pageIndex, 0, pageRefs.Count - 1)],
+            CosNames.Xyz,
+            CosNull.Instance,
+            new CosReal(top),
+            CosNull.Instance);
+
+    private static CosDictionary BuildInfoDictionary(DocumentMetadata metadata)
+    {
+        var info = new CosDictionary
+        {
+            [CosNames.Producer] = CosString.FromAscii("Charta"),
+        };
+        if (metadata.Title is { } title)
+        {
+            info[CosNames.Title] = CosString.FromText(title);
+        }
+
+        if (metadata.Author is { } author)
+        {
+            info[CosNames.Author] = CosString.FromText(author);
+        }
+
+        if (metadata.Subject is { } subject)
+        {
+            info[CosNames.Subject] = CosString.FromText(subject);
+        }
+
+        if (metadata.Keywords is { } keywords)
+        {
+            info[CosNames.Keywords] = CosString.FromText(keywords);
+        }
+
+        if (metadata.Creator is { } creator)
+        {
+            info[CosNames.Creator] = CosString.FromText(creator);
+        }
+
+        if (metadata.CreationDate is { } date)
+        {
+            var offset = date.Offset;
+            var sign = offset >= TimeSpan.Zero ? '+' : '-';
+            var formatted = string.Create(
+                CultureInfo.InvariantCulture,
+                $"D:{date:yyyyMMddHHmmss}{sign}{Math.Abs(offset.Hours):00}'{Math.Abs(offset.Minutes):00}'");
+            info[CosNames.CreationDate] = CosString.FromAscii(formatted);
+        }
+
+        return info;
     }
 
     private static void ComposeSection(
@@ -117,7 +251,8 @@ internal sealed class LayoutDocument
         CosReference pagesRef,
         List<CosReference> pageRefs,
         List<LayoutDiagnostic> diagnostics,
-        OverflowBehavior overflowBehavior)
+        OverflowBehavior overflowBehavior,
+        NavigationCollector navigation)
     {
         var contentBox = new LayoutRect(
             section.Margin,
@@ -128,7 +263,7 @@ internal sealed class LayoutDocument
         while (true)
         {
             var pageNumber = pageRefs.Count + 1;
-            var context = new DrawingContext(resources, section.PageSize.Height, pageNumber, overflowBehavior, diagnostics);
+            var context = new DrawingContext(resources, section.PageSize.Height, pageNumber, overflowBehavior, diagnostics, navigation);
 
             // Header and footer carve their heights out of this page's body box.
             var bodyTop = contentBox.Y;
@@ -175,6 +310,17 @@ internal sealed class LayoutDocument
                 [CosNames.Resources] = resourcesRef,
                 [CosNames.Contents] = contentRef,
             };
+            if (context.Annotations.Count > 0)
+            {
+                var annots = new CosArray();
+                foreach (var annotation in context.Annotations)
+                {
+                    annots.Add(BuildLinkAnnotation(annotation, section.PageSize.Height));
+                }
+
+                pageDict[CosNames.Annots] = annots;
+            }
+
             writer.WriteObject(pageRef, pageDict);
             pageRefs.Add(pageRef);
             resources.FlushPendingImages();
@@ -204,6 +350,34 @@ internal sealed class LayoutDocument
                 return;
             }
         }
+    }
+
+    private static CosDictionary BuildLinkAnnotation(PageAnnotation annotation, double pageHeight)
+    {
+        var rect = annotation.Rect;
+        var dict = new CosDictionary
+        {
+            [CosNames.Type] = CosNames.Annot,
+            [CosNames.Subtype] = CosNames.Link,
+            [CosNames.Rect] = CosArray.OfReals(
+                rect.X, pageHeight - rect.Y - rect.Height, rect.X + rect.Width, pageHeight - rect.Y),
+            [CosNames.Border] = CosArray.OfIntegers(0, 0, 0),
+        };
+
+        if (annotation.Uri is { } uri)
+        {
+            dict[CosNames.A] = new CosDictionary
+            {
+                [CosNames.S] = CosNames.Uri,
+                [CosNames.Uri] = CosString.FromAscii(uri),
+            };
+        }
+        else if (annotation.DestinationName is { } destination)
+        {
+            dict[CosNames.Dest] = CosString.FromText(destination);
+        }
+
+        return dict;
     }
 
     /// <summary>Draws a header/footer instance at a fixed Y; oversized or paginating content is clipped.</summary>

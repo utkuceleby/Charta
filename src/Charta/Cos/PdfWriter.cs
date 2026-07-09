@@ -70,16 +70,16 @@ internal sealed class PdfWriter : IDisposable
     }
 
     /// <summary>Writes the cross-reference data, trailer, and end-of-file marker, then flushes.</summary>
-    public void WriteTrailer(CosReference root)
+    public void WriteTrailer(CosReference root, CosReference? info = null)
     {
         var fileId = ComputeFileId();
         switch (Options.XrefMode)
         {
             case XrefMode.Classic:
-                WriteClassicXref(root, fileId);
+                WriteClassicXref(root, fileId, info);
                 break;
             case XrefMode.Stream:
-                WriteXrefStream(root, fileId);
+                WriteXrefStream(root, fileId, info);
                 break;
             default:
                 throw new InvalidOperationException($"Unknown xref mode {Options.XrefMode}.");
@@ -88,7 +88,7 @@ internal sealed class PdfWriter : IDisposable
         _stream.Flush();
     }
 
-    private void WriteClassicXref(CosReference root, byte[] fileId)
+    private void WriteClassicXref(CosReference root, byte[] fileId, CosReference? info)
     {
         EnsureAllObjectsWritten();
 
@@ -111,13 +111,17 @@ internal sealed class PdfWriter : IDisposable
             [CosNames.Root] = root,
             [CosNames.Id] = new CosArray(new CosString(fileId), new CosString(fileId)),
         };
+        if (info is not null)
+        {
+            trailer[CosNames.Info] = info;
+        }
 
         WriteAscii("trailer\n");
         trailer.Write(this);
         WriteAscii($"\nstartxref\n{xrefOffset.ToString(System.Globalization.CultureInfo.InvariantCulture)}\n%%EOF\n");
     }
 
-    private void WriteXrefStream(CosReference root, byte[] fileId)
+    private void WriteXrefStream(CosReference root, byte[] fileId, CosReference? info)
     {
         var xrefRef = Allocate();
         EnsureAllObjectsWritten(skipObjectNumber: xrefRef.ObjectNumber);
@@ -145,6 +149,10 @@ internal sealed class PdfWriter : IDisposable
         xref.Dictionary[CosNames.W] = CosArray.OfIntegers(1, 4, 2);
         xref.Dictionary[CosNames.Root] = root;
         xref.Dictionary[CosNames.Id] = new CosArray(new CosString(fileId), new CosString(fileId));
+        if (info is not null)
+        {
+            xref.Dictionary[CosNames.Info] = info;
+        }
 
         _offsets[xrefRef.ObjectNumber] = UnwrittenOffset; // WriteObject records the real offset
         WriteObject(xrefRef, xref);

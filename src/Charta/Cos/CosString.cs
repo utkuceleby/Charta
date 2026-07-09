@@ -7,8 +7,35 @@ internal sealed class CosString(byte[] bytes) : CosValue
 {
     public byte[] Bytes { get; } = bytes;
 
-    /// <summary>Creates a string from ASCII text. Non-ASCII text handling arrives with the text layer.</summary>
+    /// <summary>Creates a string from ASCII text.</summary>
     public static CosString FromAscii(string text) => new(Encoding.ASCII.GetBytes(text));
+
+    /// <summary>
+    /// Creates a text string (ISO 32000-2 §7.9.2.2): plain bytes when ASCII, UTF-16BE with BOM otherwise.
+    /// </summary>
+    public static CosString FromText(string text)
+    {
+        var ascii = true;
+        foreach (var c in text)
+        {
+            if (c > 0x7E || (c < 0x20 && c is not ('\n' or '\r' or '\t')))
+            {
+                ascii = false;
+                break;
+            }
+        }
+
+        if (ascii)
+        {
+            return new CosString(Encoding.ASCII.GetBytes(text));
+        }
+
+        var payload = new byte[2 + Encoding.BigEndianUnicode.GetByteCount(text)];
+        payload[0] = 0xFE;
+        payload[1] = 0xFF;
+        Encoding.BigEndianUnicode.GetBytes(text, payload.AsSpan(2));
+        return new CosString(payload);
+    }
 
     public override void Write(PdfWriter writer)
     {

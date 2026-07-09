@@ -15,6 +15,7 @@ internal sealed class DrawingContext
 {
     private readonly StringBuilder _ops = new();
     private readonly List<LayoutDiagnostic> _diagnostics;
+    private readonly NavigationCollector _navigation;
     private readonly double _pageHeight;
 
     public PageResources Resources { get; }
@@ -23,18 +24,35 @@ internal sealed class DrawingContext
 
     public int PageNumber { get; }
 
+    /// <summary>Link regions drawn on this page; the page loop turns them into /Annots.</summary>
+    public List<PageAnnotation> Annotations { get; } = [];
+
     public DrawingContext(
         PageResources resources,
         double pageHeight,
         int pageNumber,
         OverflowBehavior overflowBehavior,
-        List<LayoutDiagnostic> diagnostics)
+        List<LayoutDiagnostic> diagnostics,
+        NavigationCollector? navigation = null)
     {
         Resources = resources;
         _pageHeight = pageHeight;
         PageNumber = pageNumber;
         OverflowBehavior = overflowBehavior;
         _diagnostics = diagnostics;
+        _navigation = navigation ?? new NavigationCollector();
+    }
+
+    public void AddAnnotation(PageAnnotation annotation) => Annotations.Add(annotation);
+
+    /// <summary>Records a named destination (and optional bookmark) at a top-left-origin Y on this page.</summary>
+    public void RegisterDestination(string name, double top, string? bookmarkTitle)
+    {
+        _navigation.Destinations[name] = (PageNumber - 1, _pageHeight - top);
+        if (bookmarkTitle is not null)
+        {
+            _navigation.Bookmarks.Add((bookmarkTitle, PageNumber - 1, _pageHeight - top));
+        }
     }
 
     /// <summary>The accumulated content-stream operators for this page.</summary>

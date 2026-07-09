@@ -69,6 +69,6 @@ public sealed class Document
 
         var context = new BuildContext();
         var sections = descriptor.Pages.Select(page => page.Build(context)).ToList();
-        return LayoutDocument.Generate(output, sections, overflow, writerOptions);
+        return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata);
     }
 }

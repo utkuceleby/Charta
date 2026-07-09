@@ -7,12 +7,59 @@ internal sealed class DocumentDescriptor : IDocumentDescriptor
 {
     public List<PageDescriptor> Pages { get; } = [];
 
+    public Charta.Metadata.DocumentMetadata DocumentMetadata { get; } = new();
+
     public void Page(Action<IPageDescriptor> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
         var page = new PageDescriptor();
         configure(page);
         Pages.Add(page);
+    }
+
+    public void Metadata(Action<IMetadataDescriptor> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        configure(new MetadataDescriptor(DocumentMetadata));
+    }
+}
+
+internal sealed class MetadataDescriptor(Charta.Metadata.DocumentMetadata target) : IMetadataDescriptor
+{
+    public IMetadataDescriptor Title(string title)
+    {
+        target.Title = title;
+        return this;
+    }
+
+    public IMetadataDescriptor Author(string author)
+    {
+        target.Author = author;
+        return this;
+    }
+
+    public IMetadataDescriptor Subject(string subject)
+    {
+        target.Subject = subject;
+        return this;
+    }
+
+    public IMetadataDescriptor Keywords(string keywords)
+    {
+        target.Keywords = keywords;
+        return this;
+    }
+
+    public IMetadataDescriptor Creator(string creator)
+    {
+        target.Creator = creator;
+        return this;
+    }
+
+    public IMetadataDescriptor CreationDate(DateTimeOffset timestamp)
+    {
+        target.CreationDate = timestamp;
+        return this;
     }
 }
 
