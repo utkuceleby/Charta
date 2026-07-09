@@ -29,6 +29,15 @@ internal sealed class LayoutDocument
 
     public required Element Content { get; init; }
 
+    /// <summary>
+    /// Repeated at the top of every page. A factory, not an element: element trees carry pagination
+    /// cursors, so each page needs a fresh instance.
+    /// </summary>
+    public Func<Element>? Header { get; init; }
+
+    /// <summary>Repeated at the bottom of every page. Factory for the same reason as <see cref="Header"/>.</summary>
+    public Func<Element>? Footer { get; init; }
+
     public GenerationResult Generate(Stream output, PdfWriterOptions? options = null)
     {
         using var writer = new PdfWriter(output, options);
@@ -47,9 +56,30 @@ internal sealed class LayoutDocument
         while (true)
         {
             var pageNumber = pageRefs.Count + 1;
-            var measured = Content.Measure(constraints);
             var context = new DrawingContext(resources, PageSize.Height, pageNumber, OverflowBehavior, diagnostics);
-            var stalled = measured.Verdict == LayoutVerdict.Empty;
+
+            // Header and footer carve their heights out of this page's body box.
+            var bodyTop = contentBox.Y;
+            var bodyBottom = contentBox.Y + contentBox.Height;
+            if (Header?.Invoke() is { } header)
+            {
+                var size = DrawRepeatedElement(context, header, contentBox.Y, "Header");
+                bodyTop += size;
+            }
+
+            if (Footer?.Invoke() is { } footer)
+            {
+                var measuredFooter = footer.Measure(constraints);
+                var footerHeight = Math.Min(measuredFooter.Size.Height, contentBox.Height / 2);
+                bodyBottom -= footerHeight;
+                _ = DrawRepeatedElement(context, footer, bodyBottom, "Footer");
+            }
+
+            var bodyBox = new LayoutRect(contentBox.X, bodyTop, contentBox.Width, Math.Max(0, bodyBottom - bodyTop));
+            var bodyConstraints = new LayoutConstraints(bodyBox.Width, bodyBox.Height);
+
+            var measured = Content.Measure(bodyConstraints);
+            var stalled = measured.Verdict == LayoutVerdict.Empty || bodyBox.Height <= 0;
 
             if (stalled)
             {
@@ -59,7 +89,7 @@ internal sealed class LayoutDocument
             }
             else
             {
-                Content.Draw(context, contentBox);
+                Content.Draw(context, bodyBox);
             }
 
             var contentRef = writer.Allocate();
@@ -86,7 +116,7 @@ internal sealed class LayoutDocument
                 break;
             }
 
-            var remaining = Content.Measure(constraints);
+            var remaining = Content.Measure(bodyConstraints);
             if (remaining.Verdict == LayoutVerdict.Complete && remaining.Size is { Width: 0, Height: 0 })
             {
                 break;
@@ -135,5 +165,28 @@ internal sealed class LayoutDocument
             PageCount = pageRefs.Count,
             Diagnostics = diagnostics,
         };
+    }
+
+    /// <summary>Draws a header/footer instance at a fixed Y; oversized or paginating content is clipped.</summary>
+    private double DrawRepeatedElement(DrawingContext context, Element element, double y, string role)
+    {
+        var contentWidth = PageSize.Width - 2 * Margin;
+        var contentHeight = PageSize.Height - 2 * Margin;
+        var measured = element.Measure(new LayoutConstraints(contentWidth, contentHeight));
+        var height = Math.Min(measured.Size.Height, contentHeight / 2);
+        var bounds = new LayoutRect(Margin, y, contentWidth, height);
+
+        if (measured.Verdict != LayoutVerdict.Complete || measured.Size.Height > height)
+        {
+            context.AddDiagnostic(role, $"{role} content does not fit its band on page {context.PageNumber}; it was clipped.");
+            var captured = bounds;
+            context.Clipped(bounds, () => element.Draw(context, captured));
+        }
+        else
+        {
+            element.Draw(context, bounds);
+        }
+
+        return height;
     }
 }

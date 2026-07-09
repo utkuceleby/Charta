@@ -84,6 +84,28 @@ public class TextElementTests
     }
 
     [Fact]
+    public void Measure_NoBreakSpacePreventsWrapping()
+    {
+        // U+00A0 is class GL: "AB AB" has no break opportunity, unlike "AB AB".
+        var glued = new TextElement("AB\u00A0AB", Style());
+        var spaced = new TextElement("AB AB", Style());
+
+        Assert.Equal(10, glued.Measure(LayoutTestHelpers.Constraints(20, 100)).Size.Height, 3);   // one (overflowing) line
+        Assert.Equal(20, spaced.Measure(LayoutTestHelpers.Constraints(20, 100)).Size.Height, 3);  // wraps to two
+    }
+
+    [Fact]
+    public void Measure_BreaksAfterHyphen()
+    {
+        // '-' is class HY: a break opportunity exists after it even without spaces.
+        var text = new TextElement("AB-AB", Style());
+
+        var result = text.Measure(LayoutTestHelpers.Constraints(20, 100));
+
+        Assert.Equal(20, result.Size.Height, 3); // two lines: "AB-" / "AB"
+    }
+
+    [Fact]
     public void Draw_EmitsTextOperators()
     {
         var context = LayoutTestHelpers.CreateContext();

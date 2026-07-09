@@ -135,6 +135,59 @@ public class LayoutDocumentTests
     }
 
     [Fact]
+    public void Generate_RepeatsHeaderAndFooterOnEveryPage()
+    {
+        var document = new LayoutDocument
+        {
+            Header = () => new TextElement("AA", Style()),
+            Footer = () => new TextElement("BB", Style()),
+            Content = new ColumnElement(
+            [
+                new TextElement("CC", Style()),
+                new PageBreakElement(),
+                new TextElement("CC", Style()),
+            ]),
+        };
+
+        using var buffer = new MemoryStream();
+        var result = document.Generate(buffer, ClassicUncompressed);
+        var text = System.Text.Encoding.ASCII.GetString(buffer.ToArray());
+
+        Assert.Equal(2, result.PageCount);
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(2, CountOccurrences(text, "<00010001> Tj")); // header "AA" on both pages
+        Assert.Equal(2, CountOccurrences(text, "<00020002> Tj")); // footer "BB" on both pages
+    }
+
+    [Fact]
+    public void Generate_OversizedHeaderClipsWithDiagnostic()
+    {
+        var document = new LayoutDocument
+        {
+            Header = () => new ColumnElement([new FixedElement(10, 5000)]),
+            Content = new TextElement("AB", Style()),
+        };
+
+        var result = document.Generate(Stream.Null, ClassicUncompressed);
+
+        Assert.Equal(1, result.PageCount);
+        Assert.Contains(result.Diagnostics, d => d.Message.Contains("Header", StringComparison.Ordinal));
+    }
+
+    private static int CountOccurrences(string haystack, string needle)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = haystack.IndexOf(needle, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += needle.Length;
+        }
+
+        return count;
+    }
+
+    [Fact]
     public void LayoutSample_MatchesGoldenBytes()
     {
         using var buffer = new MemoryStream();

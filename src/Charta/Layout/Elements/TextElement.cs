@@ -1,4 +1,5 @@
 using Charta.Fonts;
+using Charta.Text;
 
 namespace Charta.Layout.Elements;
 
@@ -16,10 +17,10 @@ internal sealed class TextStyle
 }
 
 /// <summary>
-/// A paragraph block. Lines are built greedily at word boundaries for the measured width ('\n' forces
-/// a break); the pagination cursor is the next undrawn line. The word-boundary breaker is a
-/// placeholder until the UAX#14 line breaker lands. A word wider than the line gets a line of its own
-/// and may overflow horizontally (diagnostic planned with UAX#14 work).
+/// A paragraph block. Break opportunities come from the UAX#14 line breaker (mandatory breaks — LF,
+/// paragraph separators — force new lines); lines are filled greedily, and spaces before a chosen
+/// break carry no width, per UAX#14. The pagination cursor is the next undrawn line. A segment wider
+/// than the line gets a line of its own and may overflow horizontally.
 /// </summary>
 internal sealed class TextElement(string text, TextStyle style) : Element
 {
@@ -88,6 +89,8 @@ internal sealed class TextElement(string text, TextStyle style) : Element
         _nextLine += fit;
     }
 
+    private static readonly char[] LineTerminators = ['\n', '\r', '\v', '\f', '\u0085', '\u2028', '\u2029'];
+
     private List<TextLine> BuildLines(double availableWidth)
     {
         if (_lines is not null && _linesWidth.Equals(availableWidth))
@@ -96,37 +99,40 @@ internal sealed class TextElement(string text, TextStyle style) : Element
         }
 
         var lines = new List<TextLine>();
-        foreach (var paragraph in text.Split('\n'))
+        var lineStart = 0;
+        var lineEnd = 0;       // exclusive end of accepted segments
+        var lineFullWidth = 0.0; // width including trailing spaces of accepted segments
+        var segmentStart = 0;
+
+        foreach (var (position, mandatory) in LineBreaker.FindBreaks(text))
         {
-            var words = paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 0)
+            var segment = text[segmentStart..position];
+            var visible = segment.TrimEnd(LineTerminators);
+            var fullWidth = MeasureWidth(visible);
+            var fittingWidth = MeasureWidth(visible.TrimEnd(' ')); // spaces before a break are free
+
+            if (lineEnd > lineStart && lineFullWidth + fittingWidth > availableWidth)
             {
-                lines.Add(TextLine.Empty);
-                continue;
+                lines.Add(ShapeLine(lineStart, lineEnd));
+                lineStart = segmentStart;
+                lineFullWidth = 0;
             }
 
-            var current = new List<string>();
-            var currentWidth = 0.0;
-            foreach (var word in words)
-            {
-                var wordWidth = MeasureWidth(word);
-                var spaceWidth = current.Count > 0 ? MeasureWidth(" ") : 0;
-                if (current.Count > 0 && currentWidth + spaceWidth + wordWidth > availableWidth)
-                {
-                    lines.Add(ShapeLine(current));
-                    current = [];
-                    currentWidth = 0;
-                    spaceWidth = 0;
-                }
+            lineEnd = position;
+            lineFullWidth += fullWidth;
+            segmentStart = position;
 
-                current.Add(word);
-                currentWidth += spaceWidth + wordWidth;
-            }
-
-            if (current.Count > 0)
+            if (mandatory)
             {
-                lines.Add(ShapeLine(current));
+                lines.Add(ShapeLine(lineStart, lineEnd));
+                lineStart = position;
+                lineFullWidth = 0;
             }
+        }
+
+        if (lines.Count == 0)
+        {
+            lines.Add(TextLine.Empty);
         }
 
         _lines = lines;
@@ -137,6 +143,11 @@ internal sealed class TextElement(string text, TextStyle style) : Element
 
     private double MeasureWidth(string fragment)
     {
+        if (fragment.Length == 0)
+        {
+            return 0;
+        }
+
         var width = 0.0;
         foreach (var run in style.Fonts.Shape(fragment))
         {
@@ -146,9 +157,15 @@ internal sealed class TextElement(string text, TextStyle style) : Element
         return width * style.FontSize / 1000;
     }
 
-    private TextLine ShapeLine(List<string> words)
+    private TextLine ShapeLine(int start, int end)
     {
-        var runs = style.Fonts.Shape(string.Join(' ', words));
+        var content = text[start..end].TrimEnd(LineTerminators).TrimEnd(' ');
+        if (content.Length == 0)
+        {
+            return TextLine.Empty;
+        }
+
+        var runs = style.Fonts.Shape(content);
         var width = 0.0;
         foreach (var run in runs)
         {

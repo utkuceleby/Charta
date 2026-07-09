@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <None Include="Golden\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Data\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
