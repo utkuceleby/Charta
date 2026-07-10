@@ -231,7 +231,9 @@ internal static class PngDecoder
                 read += n;
             }
         }
-        catch (InvalidDataException e)
+        // InvalidDataException from the deflate layer, or ZLibException (an IOException) from the
+        // zlib wrapper — either way the compressed data is malformed.
+        catch (Exception e) when (e is InvalidDataException or IOException)
         {
             throw new ImageFormatException("PNG pixel data is not valid zlib.", e);
         }

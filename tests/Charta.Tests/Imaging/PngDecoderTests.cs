@@ -131,6 +131,17 @@ public class PngDecoderTests
             }
         }
     }
+
+    [Fact]
+    public void Decode_MalformedZlibStream_ThrowsImageFormatException()
+    {
+        // Regression: a fuzz-found PNG whose IDAT is not valid zlib once raised a raw ZLibException.
+        var data = Convert.FromHexString(
+            "89504e470d0a1a0a0000000d4948445200000002000000010800000000000000000000000b" +
+            "49444154787d016360e00200000d000b000000000000000049454e4400000000");
+
+        Assert.Throws<ImageFormatException>(() => PngDecoder.Decode(data));
+    }
 }
 
 public class JpegParserTests
@@ -160,6 +171,15 @@ public class JpegParserTests
     public void Parse_RejectsNonJpeg()
     {
         Assert.Throws<ImageFormatException>(() => JpegParser.Parse(new byte[] { 1, 2, 3, 4 }));
+    }
+
+    [Fact]
+    public void Parse_FillBytesToEndOfFile_ThrowsImageFormatException()
+    {
+        // Regression: a fuzz-found JPEG whose marker fill bytes run to EOF once indexed past the end.
+        var data = Convert.FromHexString("ffd8ffe000104a46de46000101ffff000000f9ffffffffffffffff");
+
+        Assert.Throws<ImageFormatException>(() => JpegParser.Parse(data));
     }
 
     [Fact]

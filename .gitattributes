@@ -1,5 +1,8 @@
 * text=auto
 
+# Fuzz seed/regression corpora are raw binary inputs — never normalize.
+tests/Charta.Fuzz/corpus/** binary
+
 *.pdf binary
 *.png binary
 *.jpg binary

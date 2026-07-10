@@ -42,6 +42,11 @@ internal static class JpegParser
                 pos++;
             }
 
+            if (pos + 1 >= span.Length)
+            {
+                break; // fill bytes ran to the end with no marker following
+            }
+
             var marker = span[pos + 1];
             pos += 2;
 

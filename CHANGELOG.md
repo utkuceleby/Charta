@@ -5,6 +5,15 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.10.1]
+
+### Fixed
+
+- **Parser robustness (found by fuzzing).** A malformed JPEG whose marker fill bytes run to the end
+  of the file raised an `IndexOutOfRangeException`, and a PNG with an invalid zlib stream raised a raw
+  `ZLibException`. Both now throw `ImageFormatException` like every other malformed-input case — the
+  parsers' contract is upheld. Surfaced by the new SharpFuzz fuzzing of the SFNT/PNG/JPEG parsers.
+
 ## [1.10.0]
 
 ### Changed
