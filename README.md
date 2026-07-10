@@ -169,6 +169,14 @@ Document.Create(doc => /* ... */)
     .GenerateSignedPdf("signed.pdf", signer, new SignatureInfo { Reason = "Approval" });
 ```
 
+Add a trusted RFC 3161 timestamp (PAdES B-T) by passing a timestamp authority — the signing time is
+then asserted by a third party, not the signer:
+
+```csharp
+var tsa = TimestampAuthorities.Http(new Uri("https://freetsa.org/tsr"));
+var signer = PdfSigners.FromCertificate(certificate, timestampAuthority: tsa);
+```
+
 ### HTML to PDF
 
 The optional [`Charta.Html`](https://www.nuget.org/packages/Charta.Html) add-on renders a subset of

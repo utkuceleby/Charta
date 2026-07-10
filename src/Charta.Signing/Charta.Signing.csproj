@@ -7,7 +7,7 @@
 
   <PropertyGroup>
     <PackageId>Charta.Signing</PackageId>
-    <Version>1.2.0</Version>
+    <Version>1.8.0</Version>
     <Authors>Utku Celebi</Authors>
     <Description>PAdES digital signatures for Charta: sign generated PDFs with an X.509 certificate. Uses only the .NET cryptography stack — no BouncyCastle, no native dependencies.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

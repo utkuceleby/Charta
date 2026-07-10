@@ -8,19 +8,27 @@ namespace Charta.Signing;
 /// <summary>
 /// Signs with an X.509 certificate to PAdES baseline B-B: a detached CMS SignedData over the
 /// document byte range, SHA-256 digest, with the ESS signing-certificate-v2 signed attribute and
-/// the certificate chain embedded. Uses only the .NET cryptography stack — no BouncyCastle.
+/// the certificate chain embedded. When a timestamp authority is supplied, an RFC 3161 signature
+/// timestamp is embedded as an unsigned attribute, raising the signature to PAdES B-T. Uses only the
+/// .NET cryptography stack — no BouncyCastle.
 /// </summary>
 internal sealed class Pkcs7Signer : IPdfSigner
 {
-    // ESS signing-certificate-v2 (RFC 5035) and SHA-256.
+    // ESS signing-certificate-v2 (RFC 5035), the CAdES signature-time-stamp attribute, and SHA-256.
     private static readonly Oid SigningCertificateV2Oid = new("1.2.840.113549.1.9.16.2.47");
+    private static readonly Oid SignatureTimeStampOid = new("1.2.840.113549.1.9.16.2.14");
     private static readonly Oid Sha256Oid = new("2.16.840.1.101.3.4.2.1");
 
     private readonly X509Certificate2 _certificate;
     private readonly X509Certificate2Collection _chain;
     private readonly DateTimeOffset? _signingTime;
+    private readonly ITimestampAuthority? _timestampAuthority;
 
-    public Pkcs7Signer(X509Certificate2 certificate, X509Certificate2Collection? additionalCertificates, DateTimeOffset? signingTime)
+    public Pkcs7Signer(
+        X509Certificate2 certificate,
+        X509Certificate2Collection? additionalCertificates,
+        DateTimeOffset? signingTime,
+        ITimestampAuthority? timestampAuthority)
     {
         if (!certificate.HasPrivateKey)
         {
@@ -30,9 +38,11 @@ internal sealed class Pkcs7Signer : IPdfSigner
         _certificate = certificate;
         _chain = additionalCertificates ?? [];
         _signingTime = signingTime;
+        _timestampAuthority = timestampAuthority;
     }
 
-    public int ReserveBytes => 16384;
+    // A signature timestamp adds a second CMS (TSA certificate chain included), so reserve more room.
+    public int ReserveBytes => _timestampAuthority is null ? 16384 : 32768;
 
     public byte[] SignContent(ReadOnlySpan<byte> content)
     {
@@ -54,7 +64,33 @@ internal sealed class Pkcs7Signer : IPdfSigner
         }
 
         signedCms.ComputeSignature(signer);
+
+        if (_timestampAuthority is { } tsa)
+        {
+            AddSignatureTimestamp(signedCms, tsa);
+        }
+
         return signedCms.Encode();
+    }
+
+    /// <summary>
+    /// Requests an RFC 3161 timestamp over the signer's signature value and embeds the returned token
+    /// as the CAdES signature-time-stamp unsigned attribute (PAdES B-T).
+    /// </summary>
+    private static void AddSignatureTimestamp(SignedCms signedCms, ITimestampAuthority tsa)
+    {
+        var signerInfo = signedCms.SignerInfos[0];
+        var request = Rfc3161TimestampRequest.CreateFromSignerInfo(
+            signerInfo,
+            HashAlgorithmName.SHA256,
+            requestSignerCertificates: true);
+
+        var responseBytes = tsa.RequestTimestamp(request.Encode());
+        var token = request.ProcessResponse(responseBytes, out _);
+
+        // The attribute value is the TimeStampToken (a CMS ContentInfo).
+        var tokenBytes = token.AsSignedCms().Encode();
+        signerInfo.AddUnsignedAttribute(new AsnEncodedData(SignatureTimeStampOid, tokenBytes));
     }
 
     /// <summary>ESSCertIDv2 with the SHA-256 hash of the certificate (default hash algorithm, no issuerSerial).</summary>

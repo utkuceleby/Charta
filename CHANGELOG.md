@@ -5,6 +5,17 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.8.0]
+
+### Added
+
+- **PAdES B-T signature timestamps** in `Charta.Signing`. Pass an `ITimestampAuthority` to
+  `PdfSigners.FromCertificate(..., timestampAuthority: ...)` and the signer embeds an RFC 3161
+  signature timestamp as an unsigned CMS attribute, raising the signature from PAdES B-B to B-T — the
+  signing time is then asserted by a trusted third party rather than the signer. `TimestampAuthorities.Http(url)`
+  reaches any RFC 3161 HTTP TSA; implement `ITimestampAuthority` yourself for offline or captured
+  responses. Built on the .NET `Rfc3161TimestampRequest` stack — still no BouncyCastle, no native code.
+
 ## [1.7.0]
 
 ### Added
