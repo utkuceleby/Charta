@@ -56,25 +56,23 @@ jobs:
           # Instrument the library under test (in place, in the harness output).
           ~/.dotnet/tools/sharpfuzz fuzz-bin/Charta.dll
 
-      - name: Write the seed corpus
-        if: steps.gate.outputs.run == 'true'
-        run: dotnet fuzz-bin/Charta.Fuzz.dll seed corpus
-
       - name: Fuzz ${{ matrix.target }}
         if: steps.gate.outputs.run == 'true'
         env:
           FUZZ_TARGET: ${{ matrix.target }}
-          # Let SharpFuzz find the instrumented assembly under the harness output.
         run: |
           SECONDS_LIMIT='${{ github.event.inputs.seconds }}'
           SECONDS_LIMIT="${SECONDS_LIMIT:-120}"
+          # Fuzz into a working corpus seeded from the checked-in samples, so new inputs accumulate.
+          mkdir -p work-corpus
+          cp -r tests/Charta.Fuzz/corpus/${{ matrix.target }}/. work-corpus/ 2>/dev/null || true
           ./libfuzzer-dotnet \
             --target_path=$(command -v dotnet) \
             --target_arg=fuzz-bin/Charta.Fuzz.dll \
             -max_total_time="$SECONDS_LIMIT" \
             -rss_limit_mb=2048 \
             -timeout=25 \
-            corpus/${{ matrix.target }}
+            work-corpus
 
       - name: Upload crash artifacts
         if: failure() && steps.gate.outputs.run == 'true'
