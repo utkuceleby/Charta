@@ -169,6 +169,27 @@ Document.Create(doc => /* ... */)
     .GenerateSignedPdf("signed.pdf", signer, new SignatureInfo { Reason = "Approval" });
 ```
 
+### HTML to PDF
+
+The optional [`Charta.Html`](https://www.nuget.org/packages/Charta.Html) add-on renders a subset of
+HTML/CSS. AngleSharp parses the markup; the cascade and layout are Charta's own — no browser, no
+native code. Unsupported features are reported, never thrown:
+
+```csharp
+using Charta.Html;
+
+Document.Create(doc => doc.Page(page => page.Content().Html("""
+    <style>h1 { color: #003366 } .lead { color: #555 }</style>
+    <h1>Report</h1>
+    <p class="lead">A <b>bold</b> word and a <a href="https://example.com">link</a>.</p>
+    <ul><li>first</li><li>second</li></ul>
+    """))).GeneratePdf("page.pdf");
+```
+
+Covers block flow, inline styling, lists, tables (with colspan/rowspan), rules, and images, with
+type/`.class`/`#id` selectors. See the [package readme](src/Charta.Html/README.md) for the full
+support matrix.
+
 ### Fonts on servers and in Docker
 
 Register fonts explicitly — output becomes reproducible and independent of what the host has

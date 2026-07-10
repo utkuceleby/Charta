@@ -5,6 +5,19 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.7.0]
+
+### Added
+
+- **`Charta.Html`** — a new opt-in add-on that renders a subset of HTML/CSS to PDF. AngleSharp parses
+  the markup; the CSS cascade (type/`.class`/`#id` selectors from `<style>` blocks and inline styles)
+  and the layout are Charta's own — no browser, no native code. Covers block flow (headings,
+  paragraphs, `div`/`section`, `blockquote`, `pre`, `hr`), inline styling (bold, italic, underline,
+  strike-through, color, font size/family, super/subscript, links), lists, tables (with
+  `colspan`/`rowspan`), and images (data URIs or file paths). Unsupported features are reported through
+  `HtmlRenderOptions.OnUnsupported` and skipped — rendering never throws for unsupported markup.
+  Entry point: `container.Html(html, options)`.
+
 ## [1.6.0]
 
 ### Added

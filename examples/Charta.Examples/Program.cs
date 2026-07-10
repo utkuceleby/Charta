@@ -9,5 +9,6 @@ Directory.CreateDirectory(outputDirectory);
 
 Invoice.Generate(Path.Combine(outputDirectory, "invoice.pdf"));
 Report.Generate(Path.Combine(outputDirectory, "report.pdf"));
+HtmlPage.Generate(Path.Combine(outputDirectory, "html-page.pdf"));
 
 Console.WriteLine($"Examples written to {Path.GetFullPath(outputDirectory)}");

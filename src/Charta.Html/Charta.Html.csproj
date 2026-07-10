@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Charta.Html</PackageId>
+    <Version>1.7.0</Version>
+    <Authors>Utku Celebi</Authors>
+    <Description>HTML/CSS subset rendering for Charta: turn a fragment of HTML — headings, paragraphs, lists, tables, inline styling, images and links — into a laid-out PDF. Parses with AngleSharp; the cascade and layout are Charta's own. Unsupported features are reported as diagnostics, never thrown.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>pdf;charta;html;css;html-to-pdf</PackageTags>
+    <PackageProjectUrl>https://github.com/utkuceleby/Charta</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/utkuceleby/Charta</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Charta.Html.Tests" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <ProjectReference Include="..\Charta\Charta.csproj" />
+    <!-- HTML parsing only; the CSS cascade and layout are Charta's own (no AngleSharp.Css). Pure managed. -->
+    <PackageReference Include="AngleSharp" Version="1.5.2" />
+  </ItemGroup>
+
+</Project>
