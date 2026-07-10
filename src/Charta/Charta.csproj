@@ -33,6 +33,7 @@
     <InternalsVisibleTo Include="Charta.Smoke" />
     <InternalsVisibleTo Include="Charta.Shaping.HarfBuzz" />
     <InternalsVisibleTo Include="Charta.Shaping.HarfBuzz.Tests" />
+    <InternalsVisibleTo Include="Charta.Fuzz" />
   </ItemGroup>
 
 </Project>

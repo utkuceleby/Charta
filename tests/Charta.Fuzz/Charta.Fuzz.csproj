@@ -4,15 +4,17 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
-    <PublishAot>true</PublishAot>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- SharpFuzz instruments the referenced Charta.dll; the harness itself needs no AOT/trim. -->
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="SharpFuzz" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Charta\Charta.csproj" />
-    <InternalsVisibleTo Include="Charta.Tests" />
-    <InternalsVisibleTo Include="Charta.Html.Tests" />
-    <InternalsVisibleTo Include="Charta.Fuzz" />
+    <ProjectReference Include="..\Charta.Smoke\Charta.Smoke.csproj" />
   </ItemGroup>
 
 </Project>

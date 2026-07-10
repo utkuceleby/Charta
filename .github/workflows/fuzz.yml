@@ -1,0 +1,88 @@
+name: Fuzz
+
+# Coverage-guided fuzzing of Charta's binary parsers (SFNT fonts, PNG, JPEG) with SharpFuzz +
+# libfuzzer-dotnet. Never gates pushes or PRs — it runs on a weekly schedule and on demand. A crash
+# fails the job and uploads the reproducing input as an artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Fuzzing time per target (seconds)
+        default: "120"
+      target:
+        description: Which parser to fuzz (sfnt, png, jpeg, or all)
+        default: all
+  schedule:
+    - cron: "0 4 * * 1" # Mondays 04:00 UTC
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [sfnt, png, jpeg]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip unselected targets
+        id: gate
+        run: |
+          want='${{ github.event.inputs.target }}'
+          if [ -z "$want" ] || [ "$want" = "all" ] || [ "$want" = "${{ matrix.target }}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build the libfuzzer-dotnet driver
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          sudo apt-get update && sudo apt-get install -y clang
+          curl -sSL https://raw.githubusercontent.com/Metalnem/libfuzzer-dotnet/master/libfuzzer-dotnet.cc -o libfuzzer-dotnet.cc
+          clang -fsanitize=fuzzer libfuzzer-dotnet.cc -o libfuzzer-dotnet
+
+      - name: Publish and instrument the harness
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          dotnet tool install --global SharpFuzz.CommandLine
+          dotnet publish tests/Charta.Fuzz -c Release -o fuzz-bin
+          # Instrument the library under test (in place, in the harness output).
+          ~/.dotnet/tools/sharpfuzz fuzz-bin/Charta.dll
+
+      - name: Write the seed corpus
+        if: steps.gate.outputs.run == 'true'
+        run: dotnet fuzz-bin/Charta.Fuzz.dll seed corpus
+
+      - name: Fuzz ${{ matrix.target }}
+        if: steps.gate.outputs.run == 'true'
+        env:
+          FUZZ_TARGET: ${{ matrix.target }}
+          # Let SharpFuzz find the instrumented assembly under the harness output.
+        run: |
+          SECONDS_LIMIT='${{ github.event.inputs.seconds }}'
+          SECONDS_LIMIT="${SECONDS_LIMIT:-120}"
+          ./libfuzzer-dotnet \
+            --target_path=$(command -v dotnet) \
+            --target_arg=fuzz-bin/Charta.Fuzz.dll \
+            -max_total_time="$SECONDS_LIMIT" \
+            -rss_limit_mb=2048 \
+            -timeout=25 \
+            corpus/${{ matrix.target }}
+
+      - name: Upload crash artifacts
+        if: failure() && steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: |
+            crash-*
+            timeout-*
+            oom-*
+          if-no-files-found: ignore
