@@ -118,6 +118,69 @@ public sealed class PdfSaveOptions
     /// catalog /Lang.
     /// </summary>
     public string? Language { get; init; }
+
+    /// <summary>
+    /// When set, the document is encrypted with AES-256 (PDF 2.0 security handler, V5/R6). Cannot be
+    /// combined with a signature or a PDF/A / PDF/UA conformance level (those forbid encryption).
+    /// Encrypted output is not byte-reproducible: fresh random salts and keys are generated each time.
+    /// </summary>
+    public PdfEncryption? Encryption { get; init; }
+}
+
+/// <summary>
+/// Password protection for a generated PDF, using the AES-256 standard security handler (V5/R6).
+/// </summary>
+public sealed class PdfEncryption
+{
+    /// <summary>
+    /// The password required to open the document. An empty string means the document opens without a
+    /// prompt but is still encrypted (permissions are enforced by conforming viewers).
+    /// </summary>
+    public string UserPassword { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The password granting full permissions. Defaults to the user password when null. Set a distinct
+    /// owner password to enforce <see cref="Permissions"/> against users who only have the user password.
+    /// </summary>
+    public string? OwnerPassword { get; init; }
+
+    /// <summary>What a user opening with the user password may do. Default: everything.</summary>
+    public PdfPermissions Permissions { get; init; } = PdfPermissions.All;
+}
+
+/// <summary>Operations a user may perform on an encrypted document (ISO 32000-2 Table 22).</summary>
+[Flags]
+public enum PdfPermissions
+{
+    /// <summary>No operations permitted.</summary>
+    None = 0,
+
+    /// <summary>Print the document (low resolution unless <see cref="HighResolutionPrint"/> is also set).</summary>
+    Print = 1 << 2,
+
+    /// <summary>Modify the document's contents.</summary>
+    ModifyContents = 1 << 3,
+
+    /// <summary>Copy or extract text and graphics.</summary>
+    Copy = 1 << 4,
+
+    /// <summary>Add or modify annotations and fill form fields.</summary>
+    ModifyAnnotations = 1 << 5,
+
+    /// <summary>Fill in existing form fields.</summary>
+    FillForms = 1 << 8,
+
+    /// <summary>Extract text and graphics for accessibility.</summary>
+    ExtractForAccessibility = 1 << 9,
+
+    /// <summary>Assemble the document (insert, rotate, delete pages).</summary>
+    Assemble = 1 << 10,
+
+    /// <summary>Print at high resolution.</summary>
+    HighResolutionPrint = 1 << 11,
+
+    /// <summary>All operations permitted.</summary>
+    All = Print | ModifyContents | Copy | ModifyAnnotations | FillForms | ExtractForAccessibility | Assemble | HighResolutionPrint,
 }
 
 /// <summary>Thrown only under <see cref="OverflowBehavior.Throw"/>; carries the diagnostic that would have been recorded.</summary>

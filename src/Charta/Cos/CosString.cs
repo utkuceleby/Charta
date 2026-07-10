@@ -7,6 +7,12 @@ internal sealed class CosString(byte[] bytes) : CosValue
 {
     public byte[] Bytes { get; } = bytes;
 
+    /// <summary>
+    /// Whether this string is encrypted when the document is encrypted. False for values that must be
+    /// written verbatim — the /Encrypt dictionary's own strings and the file identifier.
+    /// </summary>
+    public bool Encrypt { get; init; } = true;
+
     /// <summary>Creates a string from ASCII text.</summary>
     public static CosString FromAscii(string text) => new(Encoding.ASCII.GetBytes(text));
 
@@ -39,21 +45,22 @@ internal sealed class CosString(byte[] bytes) : CosValue
 
     public override void Write(PdfWriter writer)
     {
-        if (IsMostlyPrintable(Bytes))
+        var bytes = writer.Encryptor is { } encryptor && Encrypt ? encryptor.EncryptData(Bytes) : Bytes;
+        if (IsMostlyPrintable(bytes))
         {
-            WriteLiteral(writer);
+            WriteLiteral(writer, bytes);
         }
         else
         {
-            WriteHex(writer);
+            WriteHex(writer, bytes);
         }
     }
 
-    private void WriteLiteral(PdfWriter writer)
+    private static void WriteLiteral(PdfWriter writer, byte[] bytes)
     {
-        var sb = new StringBuilder(Bytes.Length + 2);
+        var sb = new StringBuilder(bytes.Length + 2);
         sb.Append('(');
-        foreach (var b in Bytes)
+        foreach (var b in bytes)
         {
             switch (b)
             {
@@ -73,11 +80,11 @@ internal sealed class CosString(byte[] bytes) : CosValue
         writer.WriteAscii(sb.ToString());
     }
 
-    private void WriteHex(PdfWriter writer)
+    private static void WriteHex(PdfWriter writer, byte[] bytes)
     {
-        var sb = new StringBuilder(Bytes.Length * 2 + 2);
+        var sb = new StringBuilder(bytes.Length * 2 + 2);
         sb.Append('<');
-        foreach (var b in Bytes)
+        foreach (var b in bytes)
         {
             sb.Append(b.ToString("X2", System.Globalization.CultureInfo.InvariantCulture));
         }

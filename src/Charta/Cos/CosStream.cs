@@ -12,6 +12,9 @@ internal sealed class CosStream(byte[] data) : CosValue
     /// <summary>Set to false for structures that must stay readable regardless of writer options (e.g. during debugging).</summary>
     public bool AllowCompression { get; init; } = true;
 
+    /// <summary>Whether this stream is encrypted when the document is encrypted. False for the cross-reference stream.</summary>
+    public bool Encrypt { get; init; } = true;
+
     public override void Write(PdfWriter writer)
     {
         var payload = Data;
@@ -19,6 +22,12 @@ internal sealed class CosStream(byte[] data) : CosValue
         {
             payload = Compress(Data);
             Dictionary[CosNames.Filter] = CosNames.FlateDecode;
+        }
+
+        // Encryption is applied after filters, so the crypt filter wraps the compressed bytes.
+        if (writer.Encryptor is { } encryptor && Encrypt)
+        {
+            payload = encryptor.EncryptData(payload);
         }
 
         Dictionary[CosNames.Length] = new CosInteger(payload.Length);

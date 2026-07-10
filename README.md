@@ -179,6 +179,28 @@ var tsa = TimestampAuthorities.Http(new Uri("https://freetsa.org/tsr"));
 var signer = PdfSigners.FromCertificate(certificate, timestampAuthority: tsa);
 ```
 
+### Encryption
+
+Protect a document with a password — AES-256 (the PDF 2.0 security handler, V5/R6), on the BCL crypto
+stack, no dependencies. Set a separate owner password to enforce permissions against readers who only
+have the user password:
+
+```csharp
+Document.Create(doc => /* ... */)
+    .GeneratePdf("protected.pdf", new PdfSaveOptions
+    {
+        Encryption = new PdfEncryption
+        {
+            UserPassword = "open-me",
+            OwnerPassword = "full-control",
+            Permissions = PdfPermissions.Print | PdfPermissions.Copy,
+        },
+    });
+```
+
+Encryption cannot be combined with a signature or a PDF/A / PDF/UA level (those forbid it), and
+encrypted output is not byte-reproducible — fresh random salts and keys are generated each time.
+
 ### HTML to PDF
 
 The optional [`Charta.Html`](https://www.nuget.org/packages/Charta.Html) add-on renders a subset of

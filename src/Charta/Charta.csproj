@@ -10,7 +10,7 @@
 
   <PropertyGroup>
     <PackageId>Charta</PackageId>
-    <Version>1.12.0</Version>
+    <Version>1.13.0</Version>
     <Authors>Utku Celebi</Authors>
     <Description>A permanently-MIT PDF generation library for .NET: fluent layout API, automatic pagination and UAX#14 line breaking, TrueType subsetting with kerning, zero dependencies, streaming output, NativeAOT-ready.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

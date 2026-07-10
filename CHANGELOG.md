@@ -5,6 +5,18 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.13.0]
+
+### Added
+
+- **Password encryption (AES-256).** `new PdfSaveOptions { Encryption = new PdfEncryption { ... } }`
+  encrypts the document with the PDF 2.0 standard security handler (V5, revision 6): Algorithm 2.B key
+  derivation, a user and optional owner password, and `PdfPermissions` flags — all on the .NET crypto
+  stack, no dependencies, core still zero-dependency. Every string and stream is encrypted with
+  AES-256-CBC. Verified against pypdf (user/owner passwords authenticate, wrong passwords are
+  rejected). Cannot be combined with a signature or a PDF/A / PDF/UA level, and encrypted output is
+  not byte-reproducible (fresh random salts and keys each run).
+
 ## [1.12.0]
 
 ### Added

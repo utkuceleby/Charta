@@ -3,6 +3,12 @@ using System.Text;
 
 namespace Charta.Cos;
 
+/// <summary>Encrypts a single string or stream payload (a random IV followed by ciphertext).</summary>
+internal interface IStreamEncryptor
+{
+    byte[] EncryptData(ReadOnlySpan<byte> data);
+}
+
 /// <summary>
 /// Streaming PDF serializer. Objects are written and flushed as they arrive; only their byte offsets are
 /// retained, so memory stays proportional to the largest single object, not the document.
@@ -20,6 +26,9 @@ internal sealed class PdfWriter : IDisposable
     private bool _disposed;
 
     public PdfWriterOptions Options { get; }
+
+    /// <summary>When set, string and stream payloads are encrypted as they are written (except those opted out).</summary>
+    public IStreamEncryptor? Encryptor { get; set; }
 
     public PdfWriter(Stream stream, PdfWriterOptions? options = null)
     {
@@ -70,16 +79,16 @@ internal sealed class PdfWriter : IDisposable
     }
 
     /// <summary>Writes the cross-reference data, trailer, and end-of-file marker, then flushes.</summary>
-    public void WriteTrailer(CosReference root, CosReference? info = null)
+    public void WriteTrailer(CosReference root, CosReference? info = null, CosReference? encrypt = null)
     {
         var fileId = ComputeFileId();
         switch (Options.XrefMode)
         {
             case XrefMode.Classic:
-                WriteClassicXref(root, fileId, info);
+                WriteClassicXref(root, fileId, info, encrypt);
                 break;
             case XrefMode.Stream:
-                WriteXrefStream(root, fileId, info);
+                WriteXrefStream(root, fileId, info, encrypt);
                 break;
             default:
                 throw new InvalidOperationException($"Unknown xref mode {Options.XrefMode}.");
@@ -88,7 +97,7 @@ internal sealed class PdfWriter : IDisposable
         _stream.Flush();
     }
 
-    private void WriteClassicXref(CosReference root, byte[] fileId, CosReference? info)
+    private void WriteClassicXref(CosReference root, byte[] fileId, CosReference? info, CosReference? encrypt)
     {
         EnsureAllObjectsWritten();
 
@@ -109,11 +118,16 @@ internal sealed class PdfWriter : IDisposable
         {
             [CosNames.Size] = new CosInteger(count),
             [CosNames.Root] = root,
-            [CosNames.Id] = new CosArray(new CosString(fileId), new CosString(fileId)),
+            [CosNames.Id] = FileIdArray(fileId),
         };
         if (info is not null)
         {
             trailer[CosNames.Info] = info;
+        }
+
+        if (encrypt is not null)
+        {
+            trailer[CosName.Get("Encrypt")] = encrypt;
         }
 
         WriteAscii("trailer\n");
@@ -121,7 +135,7 @@ internal sealed class PdfWriter : IDisposable
         WriteAscii($"\nstartxref\n{xrefOffset.ToString(System.Globalization.CultureInfo.InvariantCulture)}\n%%EOF\n");
     }
 
-    private void WriteXrefStream(CosReference root, byte[] fileId, CosReference? info)
+    private void WriteXrefStream(CosReference root, byte[] fileId, CosReference? info, CosReference? encrypt)
     {
         var xrefRef = Allocate();
         EnsureAllObjectsWritten(skipObjectNumber: xrefRef.ObjectNumber);
@@ -143,15 +157,21 @@ internal sealed class PdfWriter : IDisposable
         data[5] = 0xFF;
         data[6] = 0xFF;
 
-        var xref = new CosStream(data) { AllowCompression = false };
+        // The cross-reference stream itself is never encrypted (ISO 32000-2 §7.6.2).
+        var xref = new CosStream(data) { AllowCompression = false, Encrypt = false };
         xref.Dictionary[CosNames.Type] = CosNames.XRef;
         xref.Dictionary[CosNames.Size] = new CosInteger(count);
         xref.Dictionary[CosNames.W] = CosArray.OfIntegers(1, 4, 2);
         xref.Dictionary[CosNames.Root] = root;
-        xref.Dictionary[CosNames.Id] = new CosArray(new CosString(fileId), new CosString(fileId));
+        xref.Dictionary[CosNames.Id] = FileIdArray(fileId);
         if (info is not null)
         {
             xref.Dictionary[CosNames.Info] = info;
+        }
+
+        if (encrypt is not null)
+        {
+            xref.Dictionary[CosName.Get("Encrypt")] = encrypt;
         }
 
         _offsets[xrefRef.ObjectNumber] = UnwrittenOffset; // WriteObject records the real offset
@@ -172,6 +192,10 @@ internal sealed class PdfWriter : IDisposable
 
     /// <summary>First 16 bytes of the SHA-256 over everything written so far. Deterministic for identical content.</summary>
     private byte[] ComputeFileId() => _hash.GetCurrentHash().AsSpan(0, 16).ToArray();
+
+    /// <summary>The trailer /ID pair. Never encrypted, even in an encrypted document.</summary>
+    private static CosArray FileIdArray(byte[] fileId) =>
+        new(new CosString(fileId) { Encrypt = false }, new CosString(fileId) { Encrypt = false });
 
     public void Dispose()
     {

@@ -232,12 +232,34 @@ namespace Charta
         PdfA2b = 1,
         PdfUA1 = 2,
     }
+    public sealed class PdfEncryption
+    {
+        public PdfEncryption() { }
+        public string? OwnerPassword { get; init; }
+        public Charta.PdfPermissions Permissions { get; init; }
+        public string UserPassword { get; init; }
+    }
+    [System.Flags]
+    public enum PdfPermissions
+    {
+        None = 0,
+        Print = 4,
+        ModifyContents = 8,
+        Copy = 16,
+        ModifyAnnotations = 32,
+        FillForms = 256,
+        ExtractForAccessibility = 512,
+        Assemble = 1024,
+        HighResolutionPrint = 2048,
+        All = 3900,
+    }
     public sealed class PdfSaveOptions
     {
         public PdfSaveOptions() { }
         public bool Compress { get; init; }
         public Charta.PdfConformance Conformance { get; init; }
         public bool DebugLayout { get; init; }
+        public Charta.PdfEncryption? Encryption { get; init; }
         public string? Language { get; init; }
         public Charta.OverflowBehavior Overflow { get; init; }
     }

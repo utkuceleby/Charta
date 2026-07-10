@@ -63,6 +63,7 @@ internal sealed class LayoutDocument
         bool debugOverflow = false,
         PdfConformance conformance = PdfConformance.None,
         string? language = null,
+        PdfEncryption? encryption = null,
         CancellationToken cancellationToken = default)
     {
         var isUA = conformance == PdfConformance.PdfUA1;
@@ -71,7 +72,31 @@ internal sealed class LayoutDocument
             throw new InvalidOperationException("PDF/UA requires a document title. Set doc.Metadata(m => m.Title(...)).");
         }
 
+        if (encryption is not null)
+        {
+            if (conformance != PdfConformance.None)
+            {
+                throw new InvalidOperationException("PDF/A and PDF/UA forbid encryption; do not set both Conformance and Encryption.");
+            }
+
+            if (signing is not null)
+            {
+                throw new InvalidOperationException("A document cannot be both signed and encrypted.");
+            }
+        }
+
         using var writer = new PdfWriter(output, options);
+
+        CosReference? encryptRef = null;
+        Encryption.StandardSecurityHandler? securityHandler = null;
+        if (encryption is not null)
+        {
+            securityHandler = new Encryption.StandardSecurityHandler(
+                encryption.UserPassword, encryption.OwnerPassword, encryption.Permissions);
+            writer.Encryptor = securityHandler;
+            encryptRef = writer.Allocate();
+        }
+
         writer.WriteHeader();
 
         var catalogRef = writer.Allocate();
@@ -160,7 +185,13 @@ internal sealed class LayoutDocument
         }
 
         writer.WriteObject(catalogRef, catalog);
-        writer.WriteTrailer(catalogRef, infoRef);
+
+        if (encryptRef is not null && securityHandler is not null)
+        {
+            writer.WriteObject(encryptRef, securityHandler.BuildDictionary());
+        }
+
+        writer.WriteTrailer(catalogRef, infoRef, encryptRef);
 
         return new GenerationResult
         {
