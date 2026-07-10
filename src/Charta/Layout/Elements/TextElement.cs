@@ -64,6 +64,10 @@ internal sealed class TextElement : Element
     private double _linesWidth = double.NaN;
     private int _nextLine;
     private bool _complexScriptReported;
+    private Charta.Compliance.StructElement? _struct;
+
+    /// <summary>The structure tag for accessibility: "P" (default) or "H1".."H6" for headings.</summary>
+    public string TagRole { get; init; } = "P";
 
     // Bidi state, computed once (width-independent). Null when the text is purely left-to-right,
     // which keeps the fast path byte-identical to the pre-bidi implementation.
@@ -135,20 +139,25 @@ internal sealed class TextElement : Element
                 "add-on is available.");
         }
 
-        var lines = BuildLines(bounds.Width);
-        var y = bounds.Y;
-        while (_nextLine < lines.Count)
+        _struct ??= context.AddStructElement(TagRole);
+        var captured = bounds;
+        context.Tagged(TagRole, _struct, () =>
         {
-            var line = lines[_nextLine];
-            if (y + line.Height > bounds.Y + bounds.Height + 0.01)
+            var lines = BuildLines(captured.Width);
+            var y = captured.Y;
+            while (_nextLine < lines.Count)
             {
-                break;
-            }
+                var line = lines[_nextLine];
+                if (y + line.Height > captured.Y + captured.Height + 0.01)
+                {
+                    break;
+                }
 
-            DrawLine(context, line, bounds, y);
-            y += line.Height;
-            _nextLine++;
-        }
+                DrawLine(context, line, captured, y);
+                y += line.Height;
+                _nextLine++;
+            }
+        });
     }
 
     private void DrawLine(DrawingContext context, TextLine line, in LayoutRect bounds, double y)

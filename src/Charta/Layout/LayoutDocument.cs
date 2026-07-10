@@ -62,8 +62,15 @@ internal sealed class LayoutDocument
         Charta.Signing.SigningRequest? signing = null,
         bool debugOverflow = false,
         PdfConformance conformance = PdfConformance.None,
+        string? language = null,
         CancellationToken cancellationToken = default)
     {
+        var isUA = conformance == PdfConformance.PdfUA1;
+        if (isUA && (metadata?.Title is null))
+        {
+            throw new InvalidOperationException("PDF/UA requires a document title. Set doc.Metadata(m => m.Title(...)).");
+        }
+
         using var writer = new PdfWriter(output, options);
         writer.WriteHeader();
 
@@ -74,6 +81,7 @@ internal sealed class LayoutDocument
         var diagnostics = new List<LayoutDiagnostic>();
         var pageRefs = new List<CosReference>();
         var navigation = new NavigationCollector();
+        var structure = isUA ? new Compliance.StructureBuilder() : null;
 
         // The signature widget must live in the first page's annotations, so reserve its object
         // number before composing; ComposeSection injects it into page 1 only.
@@ -81,7 +89,7 @@ internal sealed class LayoutDocument
 
         foreach (var section in sections)
         {
-            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation, signatureFieldRef, debugOverflow, cancellationToken);
+            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation, signatureFieldRef, debugOverflow, structure, cancellationToken);
             if (pageRefs.Count >= MaxPages)
             {
                 break;
@@ -124,9 +132,9 @@ internal sealed class LayoutDocument
         var effectiveMetadata = metadata ?? new DocumentMetadata();
 
         CosReference? infoRef = null;
-        if (effectiveMetadata.HasAnyValue || isPdfA)
+        if (effectiveMetadata.HasAnyValue || isPdfA || isUA)
         {
-            var xmpBytes = XmpWriter.Build(effectiveMetadata, isPdfA ? "2B" : null);
+            var xmpBytes = XmpWriter.Build(effectiveMetadata, isPdfA ? "2B" : null, isUA);
             var xmpRef = writer.Allocate();
             var xmp = new CosStream(xmpBytes) { AllowCompression = false };
             xmp.Dictionary[CosNames.Type] = CosNames.Metadata;
@@ -141,6 +149,14 @@ internal sealed class LayoutDocument
         if (isPdfA)
         {
             WriteOutputIntent(writer, catalog);
+        }
+
+        if (isUA && structure is not null)
+        {
+            catalog[CosName.Get("StructTreeRoot")] = Compliance.StructureWriter.Write(writer, structure, pageRefs);
+            catalog[CosName.Get("MarkInfo")] = new CosDictionary { [CosName.Get("Marked")] = CosBoolean.True };
+            catalog[CosName.Get("Lang")] = CosString.FromText(language ?? "en-US");
+            catalog[CosName.Get("ViewerPreferences")] = new CosDictionary { [CosName.Get("DisplayDocTitle")] = CosBoolean.True };
         }
 
         writer.WriteObject(catalogRef, catalog);
@@ -301,6 +317,7 @@ internal sealed class LayoutDocument
         NavigationCollector navigation,
         CosReference? signatureFieldRef,
         bool debugOverflow,
+        Compliance.StructureBuilder? structure,
         CancellationToken cancellationToken)
     {
         var contentBox = new LayoutRect(
@@ -313,7 +330,10 @@ internal sealed class LayoutDocument
         {
             cancellationToken.ThrowIfCancellationRequested();
             var pageNumber = pageRefs.Count + 1;
-            var context = new DrawingContext(resources, section.PageSize.Height, pageNumber, overflowBehavior, diagnostics, navigation, debugOverflow);
+            var context = new DrawingContext(resources, section.PageSize.Height, pageNumber, overflowBehavior, diagnostics, navigation, debugOverflow)
+            {
+                Structure = structure,
+            };
 
             // Header and footer carve their heights out of this page's body box.
             var bodyTop = contentBox.Y;
@@ -360,6 +380,12 @@ internal sealed class LayoutDocument
                 [CosNames.Resources] = resourcesRef,
                 [CosNames.Contents] = contentRef,
             };
+            if (structure is not null)
+            {
+                pageDict[CosName.Get("StructParents")] = new CosInteger(pageRefs.Count);
+                pageDict[CosName.Get("Tabs")] = CosNames.S; // logical (structure) tab order
+            }
+
             // The signature widget goes on the very first page only.
             var includeSignature = signatureFieldRef is not null && pageRefs.Count == 0;
             if (context.Annotations.Count > 0 || includeSignature)
@@ -452,20 +478,24 @@ internal sealed class LayoutDocument
         var height = Math.Min(measured.Size.Height, contentHeight / 2);
         var bounds = new LayoutRect(section.Margin, y, contentWidth, height);
 
-        if (measured.Verdict != LayoutVerdict.Complete || measured.Size.Height > height)
+        // Repeating bands are page furniture, not document content — mark them as artifacts.
+        var band = bounds;
+        context.Artifact(() =>
         {
-            context.AddDiagnostic(role, $"{role} content does not fit its band on page {context.PageNumber}; it was clipped.");
-            var captured = bounds;
-            context.Clipped(bounds, () => element.Draw(context, captured));
-            if (context.DebugOverflow)
+            if (measured.Verdict != LayoutVerdict.Complete || measured.Size.Height > height)
             {
-                context.DrawOverflowMarker(bounds);
+                context.AddDiagnostic(role, $"{role} content does not fit its band on page {context.PageNumber}; it was clipped.");
+                context.Clipped(band, () => element.Draw(context, band));
+                if (context.DebugOverflow)
+                {
+                    context.DrawOverflowMarker(band);
+                }
             }
-        }
-        else
-        {
-            element.Draw(context, bounds);
-        }
+            else
+            {
+                element.Draw(context, band);
+            }
+        });
 
         return height;
     }

@@ -19,14 +19,14 @@ namespace Charta
         public static Charta.IContainer Bookmark(this Charta.IContainer container, string title) { }
         public static Charta.IContainer Border(this Charta.IContainer container, double thickness) { }
         public static Charta.IContainer Border(this Charta.IContainer container, double thickness, Charta.Color color) { }
-        public static void Canvas(this Charta.IContainer container, double width, double height, System.Action<Charta.ICanvas> draw) { }
+        public static void Canvas(this Charta.IContainer container, double width, double height, System.Action<Charta.ICanvas> draw, string? altText = null) { }
         public static void Column(this Charta.IContainer container, System.Action<Charta.IColumnDescriptor> content) { }
         public static void Component(this Charta.IContainer container, Charta.IComponent component) { }
         public static Charta.IContainer Extend(this Charta.IContainer container) { }
         public static Charta.IContainer Height(this Charta.IContainer container, double value) { }
         public static Charta.IContainer Hyperlink(this Charta.IContainer container, string url) { }
-        public static void Image(this Charta.IContainer container, byte[] imageData) { }
-        public static void Image(this Charta.IContainer container, string filePath) { }
+        public static void Image(this Charta.IContainer container, byte[] imageData, string? altText = null) { }
+        public static void Image(this Charta.IContainer container, string filePath, string? altText = null) { }
         public static void Layers(this Charta.IContainer container, System.Action<Charta.ILayersDescriptor> content) { }
         public static void LineHorizontal(this Charta.IContainer container, double thickness) { }
         public static void LineHorizontal(this Charta.IContainer container, double thickness, Charta.Color color) { }
@@ -42,7 +42,7 @@ namespace Charta
         public static void Row(this Charta.IContainer container, System.Action<Charta.IRowDescriptor> content) { }
         public static Charta.IContainer Section(this Charta.IContainer container, string name) { }
         public static Charta.IContainer SectionLink(this Charta.IContainer container, string sectionName) { }
-        public static void Svg(this Charta.IContainer container, string svgContent) { }
+        public static void Svg(this Charta.IContainer container, string svgContent, string? altText = null) { }
         public static void SvgFile(this Charta.IContainer container, string filePath) { }
         public static void Table(this Charta.IContainer container, System.Action<Charta.ITableDescriptor> content) { }
         public static void Text(this Charta.IContainer container, System.Action<Charta.ITextContentDescriptor> content) { }
@@ -173,6 +173,7 @@ namespace Charta
         Charta.ITextDescriptor FontColor(Charta.Color color);
         Charta.ITextDescriptor FontFamily(string family);
         Charta.ITextDescriptor FontSize(double size);
+        Charta.ITextDescriptor Heading(int level);
         Charta.ITextDescriptor Italic();
         Charta.ITextDescriptor Justify();
         Charta.ITextDescriptor LetterSpacing(double points);
@@ -229,6 +230,7 @@ namespace Charta
     {
         None = 0,
         PdfA2b = 1,
+        PdfUA1 = 2,
     }
     public sealed class PdfSaveOptions
     {
@@ -236,6 +238,7 @@ namespace Charta
         public bool Compress { get; init; }
         public Charta.PdfConformance Conformance { get; init; }
         public bool DebugLayout { get; init; }
+        public string? Language { get; init; }
         public Charta.OverflowBehavior Overflow { get; init; }
     }
     public sealed class SignatureInfo

@@ -132,6 +132,29 @@ Document.Create(doc =>
 
 Use a font that covers every character you render — PDF/A forbids showing the `.notdef` glyph.
 
+### PDF/UA accessible (tagged) documents
+
+Target PDF/UA-1 for accessibility — a full structure tree derived from the layout, marked content,
+`/Lang`, `DisplayDocTitle`, and decorations tagged as artifacts, validated by veraPDF in CI. A title
+is required; tag headings with `.Heading(1..6)` and give figures alternate text:
+
+```csharp
+Document.Create(doc =>
+{
+    doc.Metadata(m => m.Title("Accessible report"));
+    doc.Page(page => page.Content().Column(col =>
+    {
+        col.Item().Text("Quarterly results").FontSize(20).Heading(1);
+        col.Item().Text("...");
+        col.Item().Image("chart.png", altText: "Bar chart of revenue by quarter.");
+    }));
+}).GeneratePdf("accessible.pdf", new PdfSaveOptions
+{
+    Conformance = PdfConformance.PdfUA1,
+    Language = "en-US",
+});
+```
+
 ### Digital signatures
 
 The optional [`Charta.Signing`](https://www.nuget.org/packages/Charta.Signing) add-on signs a

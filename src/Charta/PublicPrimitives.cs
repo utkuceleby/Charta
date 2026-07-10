@@ -86,6 +86,13 @@ public enum PdfConformance
     /// marks annotations for printing, and always embeds fonts. Requires document metadata.
     /// </summary>
     PdfA2b,
+
+    /// <summary>
+    /// PDF/UA-1: accessible (tagged) PDF. Builds a structure tree, tags content, marks decoration as
+    /// artifacts, and sets the document language and title flag. Requires a document title and a
+    /// language; add alt text to images with the altText argument.
+    /// </summary>
+    PdfUA1,
 }
 
 /// <summary>Options for <see cref="Document.GeneratePdf(Stream, PdfSaveOptions?, CancellationToken)"/>.</summary>
@@ -105,6 +112,12 @@ public sealed class PdfSaveOptions
 
     /// <summary>Conformance level to target. Default: none.</summary>
     public PdfConformance Conformance { get; init; } = PdfConformance.None;
+
+    /// <summary>
+    /// Document language as a BCP-47 tag (e.g. "en-US", "tr-TR"). Required for PDF/UA. Sets the
+    /// catalog /Lang.
+    /// </summary>
+    public string? Language { get; init; }
 }
 
 /// <summary>Thrown only under <see cref="OverflowBehavior.Throw"/>; carries the diagnostic that would have been recorded.</summary>

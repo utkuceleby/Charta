@@ -5,6 +5,25 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.6.0]
+
+### Added
+
+- **PDF/UA-1** tagged, accessible PDF via `new PdfSaveOptions { Conformance = PdfConformance.PdfUA1, Language = "en-US" }`:
+  a full structure tree (`StructTreeRoot`, `Document` root, `H1`–`H6`, `P`, `Figure`), marked
+  content with a `ParentTree`, `/MarkInfo /Marked true`, `/Lang`, `/ViewerPreferences /DisplayDocTitle`,
+  logical tab order, decorations (headers, footers, backgrounds, rules) emitted as artifacts, and
+  pdfuaid XMP metadata. Verified compliant by the official veraPDF validator (106/106 rules) in CI.
+  A document title is required. Tag text with `.Heading(1..6)` and give figures an alternate
+  description via the new `altText` parameter on `.Image(...)`, `.Svg(...)`, and `.Canvas(...)`.
+  Free accessibility conformance — another thing no other permissively-licensed .NET PDF library
+  offers. (Provide a font covering all your text; like PDF/A, PDF/UA forbids showing the .notdef glyph.)
+
+### Changed
+
+- `ITextDescriptor` gained `Heading(int level)`; `Image`, `Svg`, and `Canvas` container extensions
+  gained an optional `altText` argument; `PdfSaveOptions` gained a `Language` property.
+
 ## [1.5.0]
 
 ### Added

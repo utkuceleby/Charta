@@ -69,9 +69,14 @@ jobs:
         run: dotnet run --project tests/Charta.Smoke -c Release -- out
       - name: Validate PDF/A-2b with veraPDF
         run: |
-          docker run --rm -v "$PWD/out:/pdf:ro" verapdf/cli:latest --flavour 2b /pdf/pdfa-sample.pdf > verapdf.xml || true
-          cat verapdf.xml
-          grep -q 'isCompliant="true"' verapdf.xml || { echo "::error::PDF/A-2b validation failed"; exit 1; }
+          docker run --rm -v "$PWD/out:/pdf:ro" verapdf/cli:latest --flavour 2b /pdf/pdfa-sample.pdf > verapdf-a.xml || true
+          cat verapdf-a.xml
+          grep -q 'isCompliant="true"' verapdf-a.xml || { echo "::error::PDF/A-2b validation failed"; exit 1; }
+      - name: Validate PDF/UA-1 with veraPDF
+        run: |
+          docker run --rm -v "$PWD/out:/pdf:ro" verapdf/cli:latest --flavour ua1 /pdf/ua-sample.pdf > verapdf-ua.xml || true
+          cat verapdf-ua.xml
+          grep -q 'isCompliant="true"' verapdf-ua.xml || { echo "::error::PDF/UA-1 validation failed"; exit 1; }
 
   aot-parity:
     strategy:

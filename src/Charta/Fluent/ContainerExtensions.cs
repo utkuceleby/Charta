@@ -143,19 +143,19 @@ public static class ContainerExtensions
         Impl(container).SetSource(descriptor.Build);
     }
 
-    /// <summary>Fills the slot with a PNG or JPEG image scaled to the available width.</summary>
-    public static void Image(this IContainer container, byte[] imageData)
+    /// <summary>Fills the slot with a PNG or JPEG image scaled to the available width. Pass <paramref name="altText"/> for a PDF/UA alternate description.</summary>
+    public static void Image(this IContainer container, byte[] imageData, string? altText = null)
     {
         ArgumentNullException.ThrowIfNull(imageData);
-        Impl(container).SetSource(ctx => new ImageElement(ctx.GetImage(imageData, imageData)));
+        Impl(container).SetSource(ctx => new ImageElement(ctx.GetImage(imageData, imageData), altText));
     }
 
-    /// <summary>Fills the slot with an image loaded from a file.</summary>
-    public static void Image(this IContainer container, string filePath)
+    /// <summary>Fills the slot with an image loaded from a file. Pass <paramref name="altText"/> for a PDF/UA alternate description.</summary>
+    public static void Image(this IContainer container, string filePath, string? altText = null)
     {
         ArgumentNullException.ThrowIfNull(filePath);
         var data = File.ReadAllBytes(filePath);
-        Impl(container).SetSource(ctx => new ImageElement(ctx.GetImage(data, data)));
+        Impl(container).SetSource(ctx => new ImageElement(ctx.GetImage(data, data), altText));
     }
 
     /// <summary>Fills the slot with a horizontal rule.</summary>
@@ -229,18 +229,18 @@ public static class ContainerExtensions
     /// Fills the slot with a fixed-size vector drawing. The callback draws onto a canvas of the given
     /// size in points, with a top-left origin. Content is clipped to the canvas bounds.
     /// </summary>
-    public static void Canvas(this IContainer container, double width, double height, Action<ICanvas> draw)
+    public static void Canvas(this IContainer container, double width, double height, Action<ICanvas> draw, string? altText = null)
     {
         ArgumentNullException.ThrowIfNull(draw);
-        Impl(container).SetSource(_ => new CanvasElement(width, height, draw));
+        Impl(container).SetSource(_ => new CanvasElement(width, height, draw, altText));
     }
 
-    /// <summary>Fills the slot with an SVG image, scaled to the available width preserving aspect ratio.</summary>
-    public static void Svg(this IContainer container, string svgContent)
+    /// <summary>Fills the slot with an SVG image, scaled to the available width preserving aspect ratio. Pass <paramref name="altText"/> for a PDF/UA alternate description.</summary>
+    public static void Svg(this IContainer container, string svgContent, string? altText = null)
     {
         ArgumentNullException.ThrowIfNull(svgContent);
         var image = Charta.Svg.SvgImage.Parse(svgContent);
-        Impl(container).SetSource(_ => new SvgElement(image));
+        Impl(container).SetSource(_ => new SvgElement(image, altText));
     }
 
     /// <summary>Fills the slot with an SVG image loaded from a file.</summary>

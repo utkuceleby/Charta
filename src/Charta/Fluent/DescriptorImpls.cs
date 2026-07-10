@@ -203,6 +203,7 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
     private bool _strikethrough;
     private double _letterSpacing;
     private TextAlignment _alignment = TextAlignment.Left;
+    private string _tagRole = "P";
 
     public ITextDescriptor FontFamily(string family)
     {
@@ -282,6 +283,14 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
         return this;
     }
 
+    public ITextDescriptor Heading(int level)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(level, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(level, 6);
+        _tagRole = "H" + level.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return this;
+    }
+
     public Element Build(BuildContext context) =>
         new TextElement(
             text,
@@ -295,7 +304,10 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
                 Strikethrough = _strikethrough,
                 LetterSpacing = _letterSpacing,
             },
-            _alignment);
+            _alignment)
+        {
+            TagRole = _tagRole,
+        };
 }
 
 internal sealed class TextSpanDescriptor : ITextSpanDescriptor

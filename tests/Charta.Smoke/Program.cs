@@ -52,6 +52,23 @@ Emit(
     }).GeneratePdf(stream, new Charta.PdfSaveOptions { Conformance = Charta.PdfConformance.PdfA2b }),
     golden: false);
 
+// A PDF/UA-1 (tagged, accessible) sample for the veraPDF ua1 gate (never golden). A title is
+// mandatory for UA; the synthetic font maps only A/B/C so text stays within that set, and the
+// canvas figure carries alternate text.
+Emit(
+    "ua-sample.pdf",
+    stream => Charta.Document.Create(d =>
+    {
+        d.Metadata(m => m.Title("Charta PDF/UA sample").Author("Charta"));
+        d.Page(page => page.Content().Column(col =>
+        {
+            col.Item().Text("ABC").FontSize(20).Heading(1);
+            col.Item().Text("CABCABCAB").FontSize(12);
+            col.Item().Canvas(60, 40, c => c.Rectangle(0, 0, 60, 40).Fill(Charta.Color.Black), altText: "A black rectangle.");
+        }));
+    }).GeneratePdf(stream, new Charta.PdfSaveOptions { Conformance = Charta.PdfConformance.PdfUA1, Language = "en-US" }),
+    golden: false);
+
 if (MultiScriptSample.Build() is { } multiScript)
 {
     Emit("multiscript-sample.pdf", stream => multiScript.GeneratePdf(stream), golden: false);

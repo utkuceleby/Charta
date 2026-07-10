@@ -8,8 +8,10 @@ namespace Charta.Layout.Elements;
 /// preserving aspect ratio. Reports Overflowing when the resulting height does not fit — the parent
 /// decides between a fresh page and clipping.
 /// </summary>
-internal sealed class ImageElement(PdfImage image) : Element
+internal sealed class ImageElement(PdfImage image, string? altText = null) : Element
 {
+    private Charta.Compliance.StructElement? _struct;
+
     public override MeasureResult Measure(in LayoutConstraints constraints)
     {
         var width = double.IsInfinity(constraints.AvailableWidth) ? image.Width : constraints.AvailableWidth;
@@ -19,16 +21,30 @@ internal sealed class ImageElement(PdfImage image) : Element
             : MeasureResult.Overflowing(width, height);
     }
 
-    public override void Draw(DrawingContext context, in LayoutRect bounds) =>
-        context.DrawImage(image, bounds);
+    public override void Draw(DrawingContext context, in LayoutRect bounds)
+    {
+        if (_struct is null && context.Structure is not null)
+        {
+            _struct = context.AddStructElement("Figure");
+            if (_struct is not null)
+            {
+                _struct.Alt = altText ?? "Image";
+            }
+        }
+
+        var captured = bounds;
+        context.Tagged("Figure", _struct, () => context.DrawImage(image, captured));
+    }
 }
 
 /// <summary>
 /// A fixed-size vector drawing surface. The draw callback runs once against a canvas sized to the
 /// element; the recorded operators are clipped to and placed within the element's bounds.
 /// </summary>
-internal sealed class CanvasElement(double width, double height, Action<ICanvas> draw) : Element
+internal sealed class CanvasElement(double width, double height, Action<ICanvas> draw, string? altText = null) : Element
 {
+    private Charta.Compliance.StructElement? _struct;
+
     public override MeasureResult Measure(in LayoutConstraints constraints) =>
         width <= constraints.AvailableWidth + 0.01 && height <= constraints.AvailableHeight + 0.01
             ? MeasureResult.Complete(width, height)
@@ -36,10 +52,20 @@ internal sealed class CanvasElement(double width, double height, Action<ICanvas>
 
     public override void Draw(DrawingContext context, in LayoutRect bounds)
     {
+        if (_struct is null && context.Structure is not null)
+        {
+            _struct = context.AddStructElement("Figure");
+            if (_struct is not null)
+            {
+                _struct.Alt = altText ?? "Drawing";
+            }
+        }
+
         var canvas = new CanvasWriter(width, height);
         draw(canvas);
         // A fixed-size canvas draws at its own size, top-left aligned, not stretched to the bounds.
-        context.DrawCanvasContent(new LayoutRect(bounds.X, bounds.Y, width, height), canvas.Content);
+        var target = new LayoutRect(bounds.X, bounds.Y, width, height);
+        context.Tagged("Figure", _struct, () => context.DrawCanvasContent(target, canvas.Content));
     }
 }
 
@@ -47,8 +73,10 @@ internal sealed class CanvasElement(double width, double height, Action<ICanvas>
 /// A scalable vector image parsed from SVG. Scales to the available width preserving the viewBox
 /// aspect ratio (like a raster image), then renders through the vector canvas.
 /// </summary>
-internal sealed class SvgElement(SvgImage image) : Element
+internal sealed class SvgElement(SvgImage image, string? altText = null) : Element
 {
+    private Charta.Compliance.StructElement? _struct;
+
     public override MeasureResult Measure(in LayoutConstraints constraints)
     {
         var width = double.IsInfinity(constraints.AvailableWidth) ? image.ViewWidth : constraints.AvailableWidth;
@@ -60,9 +88,19 @@ internal sealed class SvgElement(SvgImage image) : Element
 
     public override void Draw(DrawingContext context, in LayoutRect bounds)
     {
+        if (_struct is null && context.Structure is not null)
+        {
+            _struct = context.AddStructElement("Figure");
+            if (_struct is not null)
+            {
+                _struct.Alt = altText ?? "Vector image";
+            }
+        }
+
         var canvas = new CanvasWriter(bounds.Width, bounds.Height);
         image.Render(canvas);
-        context.DrawCanvasContent(bounds, canvas.Content);
+        var captured = bounds;
+        context.Tagged("Figure", _struct, () => context.DrawCanvasContent(captured, canvas.Content));
     }
 }
 

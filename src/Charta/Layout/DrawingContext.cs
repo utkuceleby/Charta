@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Charta.Compliance;
 using Charta.Cos;
 using Charta.Fonts;
 using Charta.Imaging;
@@ -45,6 +46,79 @@ internal sealed class DrawingContext
         DebugOverflow = debugOverflow;
     }
 
+    /// <summary>The structure tree being built when tagging (PDF/UA) is on; null otherwise.</summary>
+    public StructureBuilder? Structure { get; init; }
+
+    private int _markedDepth;
+    private StructElement? _structParent;
+
+    /// <summary>
+    /// Adds a structure element under the current parent. Returns null when not tagging or when
+    /// already inside marked content (e.g. an artifact band), so nested content stays untagged.
+    /// </summary>
+    public StructElement? AddStructElement(string type) =>
+        Structure is not null && _markedDepth == 0 ? Structure.AddElement(type, _structParent) : null;
+
+    /// <summary>Draws with a structure element as the parent of any elements created inside.</summary>
+    public void WithStructParent(StructElement parent, Action draw)
+    {
+        var previous = _structParent;
+        _structParent = parent;
+        draw();
+        _structParent = previous;
+    }
+
+    /// <summary>0-based page index for MCID allocation.</summary>
+    public int PageIndex => PageNumber - 1;
+
+    /// <summary>
+    /// Wraps drawing in a tagged marked-content sequence linked to a structure element. Nested
+    /// content (e.g. an underline inside a paragraph) stays part of the same tag.
+    /// </summary>
+    public void Tagged(string tag, StructElement? element, Action draw)
+    {
+        if (Structure is null || _markedDepth > 0 || element is null)
+        {
+            draw();
+            return;
+        }
+
+        var mcid = Structure.AllocateMcid(PageIndex, element);
+        Append($"/{tag} <</MCID {mcid.ToString(CultureInfo.InvariantCulture)}>> BDC");
+        _markedDepth++;
+        draw();
+        _markedDepth--;
+        Append("EMC");
+    }
+
+    /// <summary>Marks decorative drawing (backgrounds, borders, rules, bands) as an artifact.</summary>
+    public void Artifact(Action draw)
+    {
+        if (Structure is null || _markedDepth > 0)
+        {
+            draw();
+            return;
+        }
+
+        Append("/Artifact BDC");
+        _markedDepth++;
+        draw();
+        _markedDepth--;
+        Append("EMC");
+    }
+
+    private void MaybeArtifact(Action draw)
+    {
+        if (Structure is not null && _markedDepth == 0)
+        {
+            Artifact(draw);
+        }
+        else
+        {
+            draw();
+        }
+    }
+
     public void AddAnnotation(PageAnnotation annotation) => Annotations.Add(annotation);
 
     /// <summary>Records a named destination (and optional bookmark) at a top-left-origin Y on this page.</summary>
@@ -62,15 +136,23 @@ internal sealed class DrawingContext
 
     public void FillRect(in LayoutRect rect, LayoutColor color)
     {
-        Append($"{F(color.R)} {F(color.G)} {F(color.B)} rg");
-        Append($"{F(rect.X)} {F(PdfY(rect))} {F(rect.Width)} {F(rect.Height)} re f");
+        var r = rect;
+        MaybeArtifact(() =>
+        {
+            Append($"{F(color.R)} {F(color.G)} {F(color.B)} rg");
+            Append($"{F(r.X)} {F(PdfY(r))} {F(r.Width)} {F(r.Height)} re f");
+        });
     }
 
     public void StrokeRect(in LayoutRect rect, LayoutColor color, double lineWidth)
     {
-        Append($"{F(color.R)} {F(color.G)} {F(color.B)} RG");
-        Append($"{F(lineWidth)} w");
-        Append($"{F(rect.X)} {F(PdfY(rect))} {F(rect.Width)} {F(rect.Height)} re S");
+        var r = rect;
+        MaybeArtifact(() =>
+        {
+            Append($"{F(color.R)} {F(color.G)} {F(color.B)} RG");
+            Append($"{F(lineWidth)} w");
+            Append($"{F(r.X)} {F(PdfY(r))} {F(r.Width)} {F(r.Height)} re S");
+        });
     }
 
     /// <summary>Draws one shaped run at a baseline position (top-left-origin baseline Y).</summary>

@@ -125,6 +125,9 @@ public interface ITextDescriptor
 
     /// <summary>Justifies the lines; the last line of each paragraph stays left-aligned.</summary>
     ITextDescriptor Justify();
+
+    /// <summary>Tags the block as a heading of the given level (1–6) for accessibility (PDF/UA).</summary>
+    ITextDescriptor Heading(int level);
 }
 
 /// <summary>Styling for one span inside a rich text block.</summary>

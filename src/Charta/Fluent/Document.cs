@@ -53,6 +53,7 @@ public sealed class Document
             options?.Overflow ?? OverflowBehavior.Clip,
             debugOverflow: options?.DebugLayout ?? false,
             conformance: options?.Conformance ?? PdfConformance.None,
+            language: options?.Language,
             cancellationToken: cancellationToken);
     }
 
@@ -116,6 +117,7 @@ public sealed class Document
         Charta.Signing.SigningRequest? signing = null,
         bool debugOverflow = false,
         PdfConformance conformance = PdfConformance.None,
+        string? language = null,
         CancellationToken cancellationToken = default)
     {
         var descriptor = new DocumentDescriptor();
@@ -142,6 +144,6 @@ public sealed class Document
 
         var context = new BuildContext { TotalPages = totalPages };
         var sections = descriptor.Pages.Select(page => page.Build(context)).ToList();
-        return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata, signing, debugOverflow, conformance, cancellationToken);
+        return LayoutDocument.Generate(output, sections, overflow, writerOptions, descriptor.DocumentMetadata, signing, debugOverflow, conformance, language, cancellationToken);
     }
 }
