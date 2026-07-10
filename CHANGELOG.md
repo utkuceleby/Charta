@@ -5,6 +5,16 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.9.0]
+
+### Added
+
+- **.notdef diagnostic for PDF/A and PDF/UA.** When generating with a conformance level, text drawn
+  with a character the embedded font does not cover (which renders as .notdef — forbidden by both
+  standards) now raises a `LayoutDiagnostic`, surfacing the most common compliance mistake before a
+  validator does. At most one per page; outside PDF/A/UA nothing changes, and output bytes are
+  unaffected either way.
+
 ## [1.8.0]
 
 ### Added

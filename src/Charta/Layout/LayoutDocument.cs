@@ -89,7 +89,7 @@ internal sealed class LayoutDocument
 
         foreach (var section in sections)
         {
-            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation, signatureFieldRef, debugOverflow, structure, cancellationToken);
+            ComposeSection(writer, section, resources, resourcesRef, pagesRef, pageRefs, diagnostics, overflowBehavior, navigation, signatureFieldRef, debugOverflow, structure, conformance != PdfConformance.None, cancellationToken);
             if (pageRefs.Count >= MaxPages)
             {
                 break;
@@ -318,6 +318,7 @@ internal sealed class LayoutDocument
         CosReference? signatureFieldRef,
         bool debugOverflow,
         Compliance.StructureBuilder? structure,
+        bool checkUnmappedGlyphs,
         CancellationToken cancellationToken)
     {
         var contentBox = new LayoutRect(
@@ -333,6 +334,7 @@ internal sealed class LayoutDocument
             var context = new DrawingContext(resources, section.PageSize.Height, pageNumber, overflowBehavior, diagnostics, navigation, debugOverflow)
             {
                 Structure = structure,
+                CheckUnmappedGlyphs = checkUnmappedGlyphs,
             };
 
             // Header and footer carve their heights out of this page's body box.

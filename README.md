@@ -130,7 +130,9 @@ Document.Create(doc =>
 }).GeneratePdf("archive.pdf", new PdfSaveOptions { Conformance = PdfConformance.PdfA2b });
 ```
 
-Use a font that covers every character you render — PDF/A forbids showing the `.notdef` glyph.
+Use a font that covers every character you render — PDF/A forbids showing the `.notdef` glyph, and
+Charta raises a layout diagnostic naming the page if any text would render as `.notdef` under a
+conformance level.
 
 ### PDF/UA accessible (tagged) documents
 

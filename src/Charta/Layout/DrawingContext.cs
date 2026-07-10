@@ -49,6 +49,15 @@ internal sealed class DrawingContext
     /// <summary>The structure tree being built when tagging (PDF/UA) is on; null otherwise.</summary>
     public StructureBuilder? Structure { get; init; }
 
+    /// <summary>
+    /// When set (PDF/A or PDF/UA), text drawn with an unmapped glyph (.notdef) raises a diagnostic —
+    /// both conformance levels forbid showing .notdef, so this catches the common "font doesn't cover
+    /// the text" mistake before a validator does. At most one diagnostic per page.
+    /// </summary>
+    public bool CheckUnmappedGlyphs { get; init; }
+
+    private bool _reportedUnmapped;
+
     private int _markedDepth;
     private StructElement? _structParent;
 
@@ -165,6 +174,18 @@ internal sealed class DrawingContext
         LayoutColor color,
         double letterSpacing = 0)
     {
+        if (CheckUnmappedGlyphs && !_reportedUnmapped && text.CountGlyph(0) > 0)
+        {
+            _reportedUnmapped = true;
+            _diagnostics.Add(new LayoutDiagnostic
+            {
+                ElementPath = "Text",
+                Message = $"Page {PageNumber} contains characters with no glyph in the embedded font "
+                    + "(rendered as .notdef), which PDF/A and PDF/UA forbid. Provide a font that covers every character.",
+                PageNumber = PageNumber,
+            });
+        }
+
         var name = Resources.GetFontName(font);
         Append("BT");
         Append($"{F(color.R)} {F(color.G)} {F(color.B)} rg");
