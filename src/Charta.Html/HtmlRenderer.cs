@@ -116,6 +116,9 @@ internal sealed class HtmlRenderer
             case DisplayKind.Table:
                 RenderTable(box, element, style);
                 return;
+            case DisplayKind.Flex:
+                RenderFlex(box, element, style);
+                return;
             case DisplayKind.ListItem:
                 // A stray list-item outside a list: render its content as a block.
                 RenderContainerContent(box, element.ChildNodes, style);
@@ -173,11 +176,19 @@ internal sealed class HtmlRenderer
         switch (node)
         {
             case IText textNode:
-                var collapsed = CollapseWhitespace(textNode.Data, state);
-                if (collapsed.Length > 0)
+                // white-space: pre keeps runs of spaces and newlines; otherwise they collapse.
+                var content = style.WhiteSpace == WhiteSpaceKind.Pre
+                    ? textNode.Data
+                    : CollapseWhitespace(textNode.Data, state);
+                content = Transform(content, style.TextTransform);
+                if (content.Length > 0)
                 {
-                    StyleSpan(text.Span(collapsed), style);
+                    StyleSpan(text.Span(content), style);
                     state.WroteAnything = true;
+                    if (style.WhiteSpace == WhiteSpaceKind.Pre)
+                    {
+                        state.AtLineStart = content[^1] == '\n';
+                    }
                 }
 
                 break;
@@ -298,6 +309,63 @@ internal sealed class HtmlRenderer
         ListMarker.Square => "▪",
         _ => ordered ? $"{index}." : "•",
     };
+
+    /// <summary>
+    /// Maps a flex container to a Charta Row (or Column for <c>flex-direction: column</c>). Items with
+    /// an explicit width become fixed columns; the rest share the remaining space, weighted by
+    /// <c>flex-grow</c> (defaulting to an equal share). Alignment/justification are not modeled.
+    /// </summary>
+    private void RenderFlex(IContainer container, IElement element, ComputedStyle style)
+    {
+        var items = new List<(IElement Element, ComputedStyle Style)>();
+        foreach (var child in element.Children)
+        {
+            var childStyle = _resolver.Resolve(child, style);
+            if (childStyle.Display != DisplayKind.None)
+            {
+                items.Add((child, childStyle));
+            }
+        }
+
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        if (style.FlexDirection == FlexDirection.Column)
+        {
+            container.Column(col =>
+            {
+                if (style.Gap > 0)
+                {
+                    col.Spacing(style.Gap);
+                }
+
+                foreach (var (child, childStyle) in items)
+                {
+                    RenderContainerContent(ApplyBox(col.Item(), childStyle), child.ChildNodes, childStyle);
+                }
+            });
+            return;
+        }
+
+        container.Row(row =>
+        {
+            if (style.Gap > 0)
+            {
+                row.Spacing(style.Gap);
+            }
+
+            foreach (var (child, childStyle) in items)
+            {
+                var cell = childStyle.Width is { } w
+                    ? row.ConstantItem(w)
+                    : row.RelativeItem(childStyle.FlexGrow > 0 ? childStyle.FlexGrow : 1);
+                // Width is already consumed by ConstantItem; don't reapply it in the box.
+                RenderContainerContent(ApplyBox(cell, childStyle, applyWidth: false), child.ChildNodes, childStyle);
+            }
+        });
+    }
 
     private void RenderTable(IContainer container, IElement table, ComputedStyle style)
     {
@@ -423,7 +491,7 @@ internal sealed class HtmlRenderer
     }
 
     /// <summary>Wraps a container with margin, width, background, border, and padding, innermost last.</summary>
-    private static IContainer ApplyBox(IContainer container, ComputedStyle style)
+    private static IContainer ApplyBox(IContainer container, ComputedStyle style, bool applyWidth = true)
     {
         var c = container;
         if (style.MarginTop != 0 || style.MarginRight != 0 || style.MarginBottom != 0 || style.MarginLeft != 0)
@@ -431,7 +499,7 @@ internal sealed class HtmlRenderer
             c = c.Padding(style.MarginLeft, style.MarginTop, style.MarginRight, style.MarginBottom);
         }
 
-        if (style.Width is { } w)
+        if (applyWidth && style.Width is { } w)
         {
             c = c.Width(w);
         }
@@ -455,7 +523,7 @@ internal sealed class HtmlRenderer
     }
 
     private static bool IsBlockLevel(DisplayKind display) => display
-        is DisplayKind.Block or DisplayKind.ListItem or DisplayKind.Table or DisplayKind.InlineBlock;
+        is DisplayKind.Block or DisplayKind.ListItem or DisplayKind.Table or DisplayKind.InlineBlock or DisplayKind.Flex;
 
     private static bool AllInline(INodeList nodes)
     {
@@ -528,6 +596,40 @@ internal sealed class HtmlRenderer
         }
 
         return sb.ToString();
+    }
+
+    private static string Transform(string text, TextTransformKind transform)
+    {
+        switch (transform)
+        {
+            case TextTransformKind.Uppercase:
+                return text.ToUpperInvariant();
+            case TextTransformKind.Lowercase:
+                return text.ToLowerInvariant();
+            case TextTransformKind.Capitalize:
+                var chars = text.ToCharArray();
+                var atStart = true;
+                for (var i = 0; i < chars.Length; i++)
+                {
+                    if (char.IsWhiteSpace(chars[i]))
+                    {
+                        atStart = true;
+                    }
+                    else
+                    {
+                        if (atStart)
+                        {
+                            chars[i] = char.ToUpperInvariant(chars[i]);
+                        }
+
+                        atStart = false;
+                    }
+                }
+
+                return new string(chars);
+            default:
+                return text;
+        }
     }
 
     private void Report(string message)

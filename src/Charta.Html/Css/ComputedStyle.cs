@@ -9,11 +9,32 @@ internal enum DisplayKind
     Inline,
     InlineBlock,
     ListItem,
+    Flex,
     Table,
     TableRowGroup,
     TableRow,
     TableCell,
     None,
+}
+
+internal enum FlexDirection
+{
+    Row,
+    Column,
+}
+
+internal enum WhiteSpaceKind
+{
+    Normal,
+    Pre,
+}
+
+internal enum TextTransformKind
+{
+    None,
+    Uppercase,
+    Lowercase,
+    Capitalize,
 }
 
 internal enum VerticalAlignKind
@@ -85,6 +106,16 @@ internal sealed class ComputedStyle
 
     public ListMarker ListStyleType { get; set; } = ListMarker.Disc;
 
+    public WhiteSpaceKind WhiteSpace { get; set; } = WhiteSpaceKind.Normal;
+
+    public TextTransformKind TextTransform { get; set; } = TextTransformKind.None;
+
+    public FlexDirection FlexDirection { get; set; } = FlexDirection.Row;
+
+    public double FlexGrow { get; set; }
+
+    public double Gap { get; set; }
+
     /// <summary>A child inherits the typographic properties; box properties reset to their defaults.</summary>
     public ComputedStyle InheritForChild() => new()
     {
@@ -97,7 +128,9 @@ internal sealed class ComputedStyle
         LetterSpacing = LetterSpacing,
         LineHeight = LineHeight,
         ListStyleType = ListStyleType,
-        // Display and box properties are not inherited.
+        WhiteSpace = WhiteSpace,
+        TextTransform = TextTransform,
+        // Display, flex, and box properties are not inherited.
     };
 }
 

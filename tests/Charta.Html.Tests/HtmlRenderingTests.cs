@@ -74,4 +74,51 @@ public class HtmlRenderingTests
         Assert.Equal(1, result.PageCount);
         Assert.Empty(unsupported);
     }
+
+    [Fact]
+    public void FlexRowAndColumnRenderWithoutUnsupported()
+    {
+        var (_, rowResult, rowUnsupported) = Render(
+            "<div style=\"display:flex;gap:8px\"><span style=\"flex:2\">CAB</span><span style=\"flex:1\">BAC</span></div>");
+        Assert.True(rowResult.PageCount >= 1);
+        Assert.Empty(rowUnsupported);
+
+        var (_, colResult, colUnsupported) = Render(
+            "<div style=\"display:flex;flex-direction:column\"><div>CAB</div><div>ABC</div></div>");
+        Assert.True(colResult.PageCount >= 1);
+        Assert.Empty(colUnsupported);
+    }
+
+    [Fact]
+    public void PrePreservesNewlines()
+    {
+        // Each drawn text line emits one Td. A <pre> keeps the newline as a hard break (two lines);
+        // normal white-space collapses it to a space (one line).
+        static int Lines(string pdf) => System.Text.RegularExpressions.Regex.Count(pdf, @"\bTd\b");
+
+        var (pre, _, _) = Render("<pre>AB\nBA</pre>");
+        var (normal, _, _) = Render("<p>AB\nBA</p>");
+
+        Assert.Equal(2, Lines(pre));
+        Assert.Equal(1, Lines(normal));
+    }
+
+    [Fact]
+    public void TextTransformUppercasesContent()
+    {
+        // Lowercase letters are unmapped in the synthetic font; uppercasing them makes A/B/C map to
+        // real glyphs, so no .notdef diagnostic is raised under a conformance check.
+        var unsupported = new List<string>();
+        var document = Document.Create(doc =>
+        {
+            doc.Metadata(m => m.Title("t"));
+            doc.Page(page => page.Content().Html(
+                "<p style=\"text-transform:uppercase\">cab</p>",
+                new HtmlRenderOptions { OnUnsupported = unsupported.Add }));
+        });
+        using var buffer = new MemoryStream();
+        var result = document.GeneratePdf(buffer, new PdfSaveOptions { Conformance = PdfConformance.PdfA2b });
+
+        Assert.DoesNotContain(result.Diagnostics, d => d.Message.Contains(".notdef", StringComparison.Ordinal));
+    }
 }

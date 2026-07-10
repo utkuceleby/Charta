@@ -30,13 +30,14 @@ Document.Create(doc => doc.Page(page =>
 | **Lists** | `ul`, `ol`, `li` with disc/circle/square/decimal markers |
 | **Tables** | `table`, `thead`, `tbody`, `tr`, `th`, `td`, including `colspan`/`rowspan` |
 | **Images** | `img` from `data:` URIs or file paths (block-level) |
+| **Flexbox** | `display: flex` with `flex-direction`, `flex`/`flex-grow`, and `gap` — mapped to a row or column |
 | **Selectors** | type, `.class`, `#id`, `*`, and comma groups — from `<style>` blocks and inline `style` |
-| **Properties** | `display`, `color`, `background-color`, `font-size/family/weight/style`, `text-align`, `text-decoration`, `letter-spacing`, `line-height`, `vertical-align`, `width`, `margin`, `padding`, `border`, `list-style-type` |
+| **Properties** | `display`, `color`, `background-color`, `font-size/family/weight/style`, `text-align`, `text-decoration`, `text-transform`, `white-space` (`pre`), `letter-spacing`, `line-height`, `vertical-align`, `width`, `margin`, `padding`, `border`, `list-style-type`, and the flex properties above |
 
 ## What it does not
 
-No combinators (`>`, `+`, descendant), pseudo-classes, at-rules (`@media`, `@font-face`), flexbox, grid,
-floats, positioning, percentage widths, or the `font` shorthand. **These never throw** — each distinct
+No combinators (`>`, `+`, descendant), pseudo-classes, at-rules (`@media`, `@font-face`), grid,
+floats, positioning, percentage widths, flex alignment/justification, or the `font` shorthand. **These never throw** — each distinct
 unsupported feature is reported once through `HtmlRenderOptions.OnUnsupported` and skipped:
 
 ```csharp

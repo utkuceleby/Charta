@@ -107,6 +107,7 @@ internal sealed class StyleResolver
             case "pre":
                 style.Display = DisplayKind.Block;
                 style.FontFamily = "monospace";
+                style.WhiteSpace = WhiteSpaceKind.Pre;
                 style.MarginBottom = style.FontSize * 0.5;
                 break;
             default: break;
@@ -142,6 +143,7 @@ internal sealed class StyleResolver
                     "inline" => DisplayKind.Inline,
                     "inline-block" => DisplayKind.InlineBlock,
                     "list-item" => DisplayKind.ListItem,
+                    "flex" or "inline-flex" => DisplayKind.Flex,
                     "table" => DisplayKind.Table,
                     "table-row-group" or "table-header-group" or "table-footer-group" => DisplayKind.TableRowGroup,
                     "table-row" => DisplayKind.TableRow,
@@ -267,6 +269,48 @@ internal sealed class StyleResolver
             case "margin-right": style.MarginRight = CssValues.ParseLength(value, em) ?? style.MarginRight; break;
             case "margin-bottom": style.MarginBottom = CssValues.ParseLength(value, em) ?? style.MarginBottom; break;
             case "margin-left": style.MarginLeft = CssValues.ParseLength(value, em) ?? style.MarginLeft; break;
+
+            case "flex-direction":
+                style.FlexDirection = value.StartsWith("column", StringComparison.OrdinalIgnoreCase) ? FlexDirection.Column : FlexDirection.Row;
+                break;
+
+            case "flex-grow":
+                style.FlexGrow = double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var g) ? g : style.FlexGrow;
+                break;
+
+            case "flex":
+                // Shorthand: the first number is flex-grow (e.g. "1", "1 1 0%").
+                var firstToken = value.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                if (double.TryParse(firstToken, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var flexGrow))
+                {
+                    style.FlexGrow = flexGrow;
+                }
+                else if (value.Equals("auto", StringComparison.OrdinalIgnoreCase) || value.Equals("none", StringComparison.OrdinalIgnoreCase))
+                {
+                    style.FlexGrow = value.Equals("auto", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+                }
+
+                break;
+
+            case "gap" or "column-gap" or "row-gap":
+                style.Gap = CssValues.ParseLength(value.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? value, em) ?? style.Gap;
+                break;
+
+            case "white-space":
+                style.WhiteSpace = value.ToLowerInvariant() is "pre" or "pre-wrap" or "pre-line"
+                    ? WhiteSpaceKind.Pre
+                    : WhiteSpaceKind.Normal;
+                break;
+
+            case "text-transform":
+                style.TextTransform = value.ToLowerInvariant() switch
+                {
+                    "uppercase" => TextTransformKind.Uppercase,
+                    "lowercase" => TextTransformKind.Lowercase,
+                    "capitalize" => TextTransformKind.Capitalize,
+                    _ => TextTransformKind.None,
+                };
+                break;
 
             case "padding": ApplyBox(value, em, (t, r, b, l) => (style.PaddingTop, style.PaddingRight, style.PaddingBottom, style.PaddingLeft) = (t, r, b, l)); break;
             case "padding-top": style.PaddingTop = CssValues.ParseLength(value, em) ?? style.PaddingTop; break;

@@ -5,6 +5,17 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.11.0]
+
+### Added
+
+- **`Charta.Html` grows a flexbox subset and more CSS.** `display: flex` maps to a row (or a column
+  for `flex-direction: column`); items with a `width` become fixed columns and the rest share the
+  space weighted by `flex-grow`, with `gap` honored. `white-space: pre` (and the `<pre>` element)
+  now preserves runs of spaces and newlines instead of collapsing them, and `text-transform`
+  (`uppercase`/`lowercase`/`capitalize`) is applied to text. Flex alignment/justification remain out
+  of scope and are reported as usual.
+
 ## [1.10.1]
 
 ### Fixed
