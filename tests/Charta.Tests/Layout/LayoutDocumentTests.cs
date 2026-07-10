@@ -131,9 +131,10 @@ public class LayoutDocumentTests
 
         Assert.True(result.PageCount >= 500, $"Expected ≥500 pages, got {result.PageCount}.");
         Assert.Empty(result.Diagnostics);
-        // Budget assertion: catches O(document) buffering regressions, which jump by gigabytes.
-        // Current allocation churn baseline is ~850MB (UAX#14 shaping); reducing it is benchmark work.
-        Assert.True(allocated < 1_200_000_000, $"Allocated {allocated / 1_000_000}MB for {result.PageCount} pages.");
+        // Budget assertion: catches O(document) buffering regressions (which jump by gigabytes) and
+        // shaping-churn regressions. Baseline is ~225MB after the allocation-free LTR shaping path;
+        // 450MB leaves CI headroom while still failing if the churn creeps back toward the old ~850MB.
+        Assert.True(allocated < 450_000_000, $"Allocated {allocated / 1_000_000}MB for {result.PageCount} pages.");
     }
 
     [Fact]

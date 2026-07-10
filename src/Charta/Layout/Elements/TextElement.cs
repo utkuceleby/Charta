@@ -341,14 +341,17 @@ internal sealed class TextElement : Element
             }
         }
 
-        var width = runs.Sum(RunWidth);
+        var width = 0.0;
+        foreach (var run in runs)
+        {
+            width += RunWidth(run);
+        }
 
         // Line metrics: tallest span wins. Empty lines use the first span's style.
-        var metricStyles = runs.Count > 0
-            ? runs.Select(r => r.Style)
-            : _spans.Take(1).Select(s => s.Style);
-        foreach (var style in metricStyles)
+        var metricCount = runs.Count > 0 ? runs.Count : Math.Min(1, _spans.Count);
+        for (var i = 0; i < metricCount; i++)
         {
+            var style = runs.Count > 0 ? runs[i].Style : _spans[i].Style;
             var primary = style.Fonts.Fonts[0];
             ascent = Math.Max(ascent, primary.AscentRatio * style.FontSize);
             height = Math.Max(height, (primary.AscentRatio - primary.DescentRatio) * style.FontSize * style.LineSpacing);

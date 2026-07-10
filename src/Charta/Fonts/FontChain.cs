@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Charta.Fonts;
 
 /// <summary>
@@ -33,26 +31,30 @@ internal sealed class FontChain
     /// </summary>
     public IReadOnlyList<FontRun> ShapeRun(string text, ShaperDirection direction)
     {
-        var segments = new List<(PdfFont Font, string Text)>();
-        var segment = new StringBuilder();
+        // Split into maximal same-font segments by character offset, slicing each once — no per-rune
+        // string allocation. Boundaries are found by scanning runes; the text is cut with Substring.
+        var segments = new List<(PdfFont Font, int Start, int Length)>();
+        var segmentStart = 0;
         PdfFont? segmentFont = null;
+        var index = 0;
 
-        foreach (var rune in text.EnumerateRunes())
+        while (index < text.Length)
         {
+            System.Text.Rune.DecodeFromUtf16(text.AsSpan(index), out var rune, out var consumed);
             var font = SelectFont(rune.Value);
-            if (!ReferenceEquals(font, segmentFont) && segment.Length > 0)
+            if (segmentFont is not null && !ReferenceEquals(font, segmentFont))
             {
-                segments.Add((segmentFont!, segment.ToString()));
-                segment.Clear();
+                segments.Add((segmentFont, segmentStart, index - segmentStart));
+                segmentStart = index;
             }
 
             segmentFont = font;
-            segment.Append(rune.ToString());
+            index += consumed;
         }
 
-        if (segment.Length > 0)
+        if (segmentFont is not null)
         {
-            segments.Add((segmentFont!, segment.ToString()));
+            segments.Add((segmentFont, segmentStart, index - segmentStart));
         }
 
         if (direction == ShaperDirection.RightToLeft)
@@ -61,8 +63,10 @@ internal sealed class FontChain
         }
 
         var runs = new List<FontRun>(segments.Count);
-        foreach (var (font, segmentText) in segments)
+        foreach (var (font, start, length) in segments)
         {
+            // Avoid copying when the single segment already spans the whole run.
+            var segmentText = start == 0 && length == text.Length ? text : text.Substring(start, length);
             runs.Add(new FontRun(font, font.ShapeRun(segmentText, direction)));
         }
 

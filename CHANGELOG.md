@@ -5,6 +5,15 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.10.0]
+
+### Changed
+
+- **Text shaping allocates far less.** The left-to-right shaping path no longer builds per-cluster
+  lists (cluster grouping is only needed to reverse right-to-left runs), and font-run splitting slices
+  by offset instead of rebuilding strings character by character. A 500-page text document now churns
+  ~225 MB instead of ~850 MB — about 75% less — with byte-identical output. No API change.
+
 ## [1.9.0]
 
 ### Added

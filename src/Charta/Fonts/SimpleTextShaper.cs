@@ -19,40 +19,48 @@ internal sealed class SimpleTextShaper : ITextShaper
     public IReadOnlyList<ShaperGlyph> Shape(SfntFont font, string text, ShaperDirection direction)
     {
         var rtl = direction == ShaperDirection.RightToLeft;
-
-        // Decode runes into glyphs, grouping base + following combining marks into clusters.
-        var clusters = new List<List<ShaperGlyph>>();
-        List<ShaperGlyph>? current = null;
-        var charIndex = 0;
-        foreach (var rune in text.EnumerateRunes())
-        {
-            var isMark = UnicodeBidi.GetClass(rune.Value) == BidiClass.NSM;
-            var codepoint = rtl ? UnicodeBidi.GetMirror(rune.Value) : rune.Value;
-            var gid = font.MapCodepoint(codepoint);
-            var glyph = new ShaperGlyph(gid, 0, 0, 0, charIndex, rune.Utf16SequenceLength);
-
-            if (current is null || !isMark)
-            {
-                current = [glyph];
-                clusters.Add(current);
-            }
-            else
-            {
-                current.Add(glyph); // combining mark joins the current cluster
-            }
-
-            charIndex += rune.Utf16SequenceLength;
-        }
-
-        if (rtl)
-        {
-            clusters.Reverse(); // reverse cluster order, keep base-then-marks within each cluster
-        }
-
         var glyphs = new List<ShaperGlyph>(text.Length);
-        foreach (var cluster in clusters)
+
+        if (!rtl)
         {
-            glyphs.AddRange(cluster);
+            // Left-to-right: glyph order equals codepoint order, so no cluster machinery is needed.
+            var charIndex = 0;
+            foreach (var rune in text.EnumerateRunes())
+            {
+                glyphs.Add(new ShaperGlyph(font.MapCodepoint(rune.Value), 0, 0, 0, charIndex, rune.Utf16SequenceLength));
+                charIndex += rune.Utf16SequenceLength;
+            }
+        }
+        else
+        {
+            // Right-to-left: mirror codepoints, then reverse cluster order keeping base + marks together.
+            var clusters = new List<List<ShaperGlyph>>();
+            List<ShaperGlyph>? current = null;
+            var charIndex = 0;
+            foreach (var rune in text.EnumerateRunes())
+            {
+                var isMark = UnicodeBidi.GetClass(rune.Value) == BidiClass.NSM;
+                var gid = font.MapCodepoint(UnicodeBidi.GetMirror(rune.Value));
+                var glyph = new ShaperGlyph(gid, 0, 0, 0, charIndex, rune.Utf16SequenceLength);
+
+                if (current is null || !isMark)
+                {
+                    current = [glyph];
+                    clusters.Add(current);
+                }
+                else
+                {
+                    current.Add(glyph); // combining mark joins the current cluster
+                }
+
+                charIndex += rune.Utf16SequenceLength;
+            }
+
+            clusters.Reverse();
+            foreach (var cluster in clusters)
+            {
+                glyphs.AddRange(cluster);
+            }
         }
 
         // GPOS kerning between visually adjacent glyphs (delta applied to the left glyph).
