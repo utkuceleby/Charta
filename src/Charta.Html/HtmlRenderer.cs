@@ -556,12 +556,12 @@ internal sealed class HtmlRenderer
             return null;
         }
 
+        // Generic families have no portable mapping (Charta bundles no fonts); fall back to the
+        // document's default font. Register a concrete family and name it for a specific look.
         return family.ToLowerInvariant() switch
         {
-            "monospace" => "Courier New",
-            "serif" => "Times New Roman",
-            "sans-serif" => "Arial",
-            "cursive" or "fantasy" or "system-ui" or "ui-sans-serif" or "ui-serif" => null,
+            "monospace" or "serif" or "sans-serif" or "cursive" or "fantasy"
+                or "system-ui" or "ui-monospace" or "ui-sans-serif" or "ui-serif" => null,
             _ => family,
         };
     }
