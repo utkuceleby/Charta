@@ -10,12 +10,12 @@ namespace Charta.Html.Css;
 internal sealed class StyleResolver
 {
     private readonly List<CssRule> _rules;
-    private readonly ICollection<string> _unsupported;
+    private readonly Action<string> _report;
 
-    public StyleResolver(List<CssRule> rules, ICollection<string> unsupported)
+    public StyleResolver(List<CssRule> rules, Action<string> report)
     {
         _rules = rules;
-        _unsupported = unsupported;
+        _report = report;
     }
 
     public ComputedStyle Resolve(IElement element, ComputedStyle parent)
@@ -137,7 +137,16 @@ internal sealed class StyleResolver
         switch (name)
         {
             case "display":
-                style.Display = value.ToLowerInvariant() switch
+                var display = value.ToLowerInvariant();
+                if (display is "grid" or "inline-grid")
+                {
+                    // Grid is deliberately out of scope; fall back to block flow.
+                    _report("CSS grid layout is not supported (use flexbox or tables)");
+                    style.Display = DisplayKind.Block;
+                    break;
+                }
+
+                style.Display = display switch
                 {
                     "block" => DisplayKind.Block,
                     "inline" => DisplayKind.Inline,
@@ -179,7 +188,7 @@ internal sealed class StyleResolver
                 break;
 
             case "font":
-                _unsupported.Add("CSS 'font' shorthand is not supported; use the longhand properties");
+                _report("CSS 'font' shorthand is not supported; use the longhand properties");
                 break;
 
             case "color":
@@ -197,7 +206,7 @@ internal sealed class StyleResolver
                 }
                 else if (name == "background")
                 {
-                    _unsupported.Add("CSS 'background' shorthand supports only a solid color");
+                    _report("CSS 'background' shorthand supports only a solid color");
                 }
 
                 break;
@@ -239,11 +248,27 @@ internal sealed class StyleResolver
 
             case "width":
                 style.Width = CssValues.ParseLength(value, em);
-                if (style.Width is null && value.Contains('%', StringComparison.Ordinal))
-                {
-                    _unsupported.Add("CSS percentage 'width' is not supported");
-                }
+                // A percentage width is resolved later against the container width, if one is known.
+                style.WidthPercent = style.Width is null && value.EndsWith('%') && double.TryParse(
+                    value.TrimEnd('%').Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pct)
+                    ? pct
+                    : style.WidthPercent;
+                break;
 
+            case "justify-content":
+                style.JustifyContent = value.ToLowerInvariant() switch
+                {
+                    "center" => JustifyContentKind.Center,
+                    "flex-end" or "end" or "right" => JustifyContentKind.End,
+                    "space-between" => JustifyContentKind.SpaceBetween,
+                    "space-around" => JustifyContentKind.SpaceAround,
+                    "space-evenly" => JustifyContentKind.SpaceEvenly,
+                    _ => JustifyContentKind.Start,
+                };
+                break;
+
+            case "align-items" or "align-self" or "align-content":
+                _report($"CSS '{name}' (cross-axis alignment) is not supported");
                 break;
 
             case "list-style-type" or "list-style":

@@ -15,32 +15,48 @@ internal sealed class HtmlRenderer
 {
     private readonly HtmlRenderOptions _options;
     private readonly StyleResolver _resolver;
-    private readonly HashSet<string> _reported = new(StringComparer.Ordinal);
+    private readonly Action<string> _report;
 
-    private HtmlRenderer(HtmlRenderOptions options, StyleResolver resolver)
+    // The width available to the current container's children, in points; null when unknown. Used to
+    // resolve percentage widths. Saved and restored around each block that establishes a new width.
+    private double? _basis;
+
+    private HtmlRenderer(HtmlRenderOptions options, StyleResolver resolver, Action<string> report)
     {
         _options = options;
         _resolver = resolver;
+        _report = report;
     }
 
     public static void Render(IContainer container, string html, HtmlRenderOptions options)
     {
         var document = new HtmlParser().ParseDocument(html);
-        var unsupported = new List<string>();
+
+        // One deduplicating sink shared by parse-time and resolve-time diagnostics.
+        var reported = new HashSet<string>(StringComparer.Ordinal);
+        void Report(string message)
+        {
+            if (options.OnUnsupported is { } sink && reported.Add(message))
+            {
+                sink(message);
+            }
+        }
 
         var order = 0;
         var rules = new List<CssRule>();
+        var parseMessages = new List<string>();
         foreach (var styleEl in document.QuerySelectorAll("style"))
         {
-            rules.AddRange(CssParser.Parse(styleEl.TextContent, order, unsupported));
+            rules.AddRange(CssParser.Parse(styleEl.TextContent, order, parseMessages));
             order += 10_000;
         }
 
-        var renderer = new HtmlRenderer(options, new StyleResolver(rules, unsupported));
-        foreach (var message in unsupported)
+        foreach (var message in parseMessages)
         {
-            renderer.Report(message);
+            Report(message);
         }
+
+        var renderer = new HtmlRenderer(options, new StyleResolver(rules, Report), Report);
 
         var root = new ComputedStyle
         {
@@ -50,6 +66,7 @@ internal sealed class HtmlRenderer
             Color = options.BaseColor,
         };
 
+        renderer._basis = options.ContentWidth;
         var body = (INode?)document.Body ?? document.DocumentElement;
         renderer.RenderContainerContent(container, body.ChildNodes, root);
     }
@@ -108,40 +125,50 @@ internal sealed class HtmlRenderer
 
     private void RenderBlockElement(IColumnDescriptor col, IElement element, ComputedStyle style)
     {
+        ResolveWidth(style);
         var tag = element.LocalName.ToLowerInvariant();
         var box = ApplyBox(col.Item(), style);
 
-        switch (style.Display)
+        var savedBasis = _basis;
+        _basis = ContentBasis(style);
+        try
         {
-            case DisplayKind.Table:
-                RenderTable(box, element, style);
-                return;
-            case DisplayKind.Flex:
-                RenderFlex(box, element, style);
-                return;
-            case DisplayKind.ListItem:
-                // A stray list-item outside a list: render its content as a block.
-                RenderContainerContent(box, element.ChildNodes, style);
-                return;
-        }
+            switch (style.Display)
+            {
+                case DisplayKind.Table:
+                    RenderTable(box, element, style);
+                    return;
+                case DisplayKind.Flex:
+                    RenderFlex(box, element, style);
+                    return;
+                case DisplayKind.ListItem:
+                    // A stray list-item outside a list: render its content as a block.
+                    RenderContainerContent(box, element.ChildNodes, style);
+                    return;
+            }
 
-        switch (tag)
+            switch (tag)
+            {
+                case "hr":
+                    box.LineHorizontal(Math.Max(style.BorderThickness, 1), style.BorderColor);
+                    return;
+                case "ul" or "ol":
+                    RenderList(box, element, style);
+                    return;
+                case "img":
+                    RenderImage(box, element, style);
+                    return;
+                case "a" when element.GetAttribute("href") is { Length: > 0 } href && !href.StartsWith('#'):
+                    RenderContainerContent(box.Hyperlink(href), element.ChildNodes, style);
+                    return;
+            }
+
+            RenderContainerContent(box, element.ChildNodes, style);
+        }
+        finally
         {
-            case "hr":
-                box.LineHorizontal(Math.Max(style.BorderThickness, 1), style.BorderColor);
-                return;
-            case "ul" or "ol":
-                RenderList(box, element, style);
-                return;
-            case "img":
-                RenderImage(box, element, style);
-                return;
-            case "a" when element.GetAttribute("href") is { Length: > 0 } href && !href.StartsWith('#'):
-                RenderContainerContent(box.Hyperlink(href), element.ChildNodes, style);
-                return;
+            _basis = savedBasis;
         }
-
-        RenderContainerContent(box, element.ChildNodes, style);
     }
 
     private void RenderInlineBlock(IContainer container, IEnumerable<INode> nodes, ComputedStyle style)
@@ -313,7 +340,9 @@ internal sealed class HtmlRenderer
     /// <summary>
     /// Maps a flex container to a Charta Row (or Column for <c>flex-direction: column</c>). Items with
     /// an explicit width become fixed columns; the rest share the remaining space, weighted by
-    /// <c>flex-grow</c> (defaulting to an equal share). Alignment/justification are not modeled.
+    /// <c>flex-grow</c> (defaulting to an equal share). When every item is fixed-width,
+    /// <c>justify-content</c> distributes the free space with spacer items. Cross-axis alignment is
+    /// not modeled.
     /// </summary>
     private void RenderFlex(IContainer container, IElement element, ComputedStyle style)
     {
@@ -323,6 +352,7 @@ internal sealed class HtmlRenderer
             var childStyle = _resolver.Resolve(child, style);
             if (childStyle.Display != DisplayKind.None)
             {
+                ResolveWidth(childStyle);
                 items.Add((child, childStyle));
             }
         }
@@ -343,11 +373,15 @@ internal sealed class HtmlRenderer
 
                 foreach (var (child, childStyle) in items)
                 {
-                    RenderContainerContent(ApplyBox(col.Item(), childStyle), child.ChildNodes, childStyle);
+                    RenderFlexItem(ApplyBox(col.Item(), childStyle), child, childStyle);
                 }
             });
             return;
         }
+
+        // justify-content only has room to act when no item grows to fill the row.
+        var allFixed = items.TrueForAll(i => i.Style.Width is not null);
+        var (lead, between, trail) = SpacerWeights(allFixed ? style.JustifyContent : JustifyContentKind.Start);
 
         container.Row(row =>
         {
@@ -356,15 +390,56 @@ internal sealed class HtmlRenderer
                 row.Spacing(style.Gap);
             }
 
-            foreach (var (child, childStyle) in items)
+            if (lead > 0)
             {
+                row.RelativeItem(lead);
+            }
+
+            for (var i = 0; i < items.Count; i++)
+            {
+                var (child, childStyle) = items[i];
+                // Width is already consumed by ConstantItem; don't reapply it in the box.
                 var cell = childStyle.Width is { } w
                     ? row.ConstantItem(w)
                     : row.RelativeItem(childStyle.FlexGrow > 0 ? childStyle.FlexGrow : 1);
-                // Width is already consumed by ConstantItem; don't reapply it in the box.
-                RenderContainerContent(ApplyBox(cell, childStyle, applyWidth: false), child.ChildNodes, childStyle);
+                RenderFlexItem(ApplyBox(cell, childStyle, applyWidth: false), child, childStyle);
+
+                if (between > 0 && i < items.Count - 1)
+                {
+                    row.RelativeItem(between);
+                }
+            }
+
+            if (trail > 0)
+            {
+                row.RelativeItem(trail);
             }
         });
+    }
+
+    /// <summary>Spacer weights (leading, between-items, trailing) that realize a justify-content value.</summary>
+    private static (double Lead, double Between, double Trail) SpacerWeights(JustifyContentKind justify) => justify switch
+    {
+        JustifyContentKind.End => (1, 0, 0),
+        JustifyContentKind.Center => (1, 0, 1),
+        JustifyContentKind.SpaceBetween => (0, 1, 0),
+        JustifyContentKind.SpaceAround => (1, 2, 1),
+        JustifyContentKind.SpaceEvenly => (1, 1, 1),
+        _ => (0, 0, 0),
+    };
+
+    private void RenderFlexItem(IContainer container, IElement element, ComputedStyle style)
+    {
+        var savedBasis = _basis;
+        _basis = ContentBasis(style);
+        try
+        {
+            RenderContainerContent(container, element.ChildNodes, style);
+        }
+        finally
+        {
+            _basis = savedBasis;
+        }
     }
 
     private void RenderTable(IContainer container, IElement table, ComputedStyle style)
@@ -488,6 +563,43 @@ internal sealed class HtmlRenderer
             : src;
 
         return File.Exists(path) ? File.ReadAllBytes(path) : null;
+    }
+
+    /// <summary>Turns a percentage width into an absolute one against the current basis, if known.</summary>
+    private void ResolveWidth(ComputedStyle style)
+    {
+        if (style.Width is not null || style.WidthPercent is not { } pct)
+        {
+            return;
+        }
+
+        if (_basis is { } basis)
+        {
+            style.Width = basis * pct / 100.0;
+        }
+        else
+        {
+            Report("percentage width needs HtmlRenderOptions.ContentWidth to resolve");
+        }
+    }
+
+    /// <summary>The width available to an element's children: its own width (or the inherited basis) less padding.</summary>
+    private double? ContentBasis(ComputedStyle style)
+    {
+        var outer = style.Width ?? _basis;
+        if (outer is not { } width)
+        {
+            return null;
+        }
+
+        var inner = width - style.PaddingLeft - style.PaddingRight;
+        if (style.Width is null)
+        {
+            // The element fills the basis, so its own margins reduce what is left for children.
+            inner -= style.MarginLeft + style.MarginRight;
+        }
+
+        return Math.Max(0, inner);
     }
 
     /// <summary>Wraps a container with margin, width, background, border, and padding, innermost last.</summary>
@@ -632,13 +744,7 @@ internal sealed class HtmlRenderer
         }
     }
 
-    private void Report(string message)
-    {
-        if (_options.OnUnsupported is { } sink && _reported.Add(message))
-        {
-            sink(message);
-        }
-    }
+    private void Report(string message) => _report(message);
 
     private static string Truncate(string? s) => s is null ? string.Empty : s.Length <= 40 ? s : s[..40] + "…";
 

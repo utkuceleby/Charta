@@ -5,6 +5,18 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.12.0]
+
+### Added
+
+- **`Charta.Html`: percentage widths, `justify-content`, and clearer diagnostics.** Set
+  `HtmlRenderOptions.ContentWidth` (usually the page width minus margins) and `width: 50%` resolves to
+  points — against resolved parent widths when nested. Flex rows honor `justify-content` (`center`,
+  `flex-end`, `space-between`, `space-around`, `space-evenly`) by distributing free space when items
+  are fixed-width. `display: grid` and `@page` are now reported with guidance instead of being
+  silently dropped, and resolve-time diagnostics (grid, cross-axis alignment, unresolved percentages)
+  reliably reach `OnUnsupported`. Grid stays out of scope by design.
+
 ## [1.11.0]
 
 ### Added

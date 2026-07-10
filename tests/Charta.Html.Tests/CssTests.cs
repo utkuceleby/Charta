@@ -17,7 +17,7 @@ public class CssTests
             rules.AddRange(CssParser.Parse(styleEl.TextContent, 0, unsupported));
         }
 
-        var resolver = new StyleResolver(rules, unsupported);
+        var resolver = new StyleResolver(rules, unsupported.Add);
         return resolver.Resolve(document.QuerySelector(selector)!, new ComputedStyle { Display = DisplayKind.Block, FontSize = 12 });
     }
 

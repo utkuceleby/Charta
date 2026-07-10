@@ -37,6 +37,16 @@ internal enum TextTransformKind
     Capitalize,
 }
 
+internal enum JustifyContentKind
+{
+    Start,
+    Center,
+    End,
+    SpaceBetween,
+    SpaceAround,
+    SpaceEvenly,
+}
+
 internal enum VerticalAlignKind
 {
     Baseline,
@@ -83,6 +93,11 @@ internal sealed class ComputedStyle
     public Color? BackgroundColor { get; set; }
 
     public double? Width { get; set; }
+
+    /// <summary>A percentage width (0–100), resolved against the container width at render time.</summary>
+    public double? WidthPercent { get; set; }
+
+    public JustifyContentKind JustifyContent { get; set; } = JustifyContentKind.Start;
 
     public double MarginTop { get; set; }
 

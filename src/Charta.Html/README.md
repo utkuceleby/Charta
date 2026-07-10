@@ -30,14 +30,17 @@ Document.Create(doc => doc.Page(page =>
 | **Lists** | `ul`, `ol`, `li` with disc/circle/square/decimal markers |
 | **Tables** | `table`, `thead`, `tbody`, `tr`, `th`, `td`, including `colspan`/`rowspan` |
 | **Images** | `img` from `data:` URIs or file paths (block-level) |
-| **Flexbox** | `display: flex` with `flex-direction`, `flex`/`flex-grow`, and `gap` — mapped to a row or column |
+| **Flexbox** | `display: flex` with `flex-direction`, `flex`/`flex-grow`, `gap`, and `justify-content` — mapped to a row or column |
+| **Sizing** | absolute widths, and percentage widths when `HtmlRenderOptions.ContentWidth` is set (resolved against parent widths when nested) |
 | **Selectors** | type, `.class`, `#id`, `*`, and comma groups — from `<style>` blocks and inline `style` |
-| **Properties** | `display`, `color`, `background-color`, `font-size/family/weight/style`, `text-align`, `text-decoration`, `text-transform`, `white-space` (`pre`), `letter-spacing`, `line-height`, `vertical-align`, `width`, `margin`, `padding`, `border`, `list-style-type`, and the flex properties above |
+| **Properties** | `display`, `color`, `background-color`, `font-size/family/weight/style`, `text-align`, `text-decoration`, `text-transform`, `white-space` (`pre`), `letter-spacing`, `line-height`, `vertical-align`, `width` (incl. `%`), `margin`, `padding`, `border`, `list-style-type`, and the flex properties above |
 
 ## What it does not
 
-No combinators (`>`, `+`, descendant), pseudo-classes, at-rules (`@media`, `@font-face`), grid,
-floats, positioning, percentage widths, flex alignment/justification, or the `font` shorthand. **These never throw** — each distinct
+No combinators (`>`, `+`, descendant), pseudo-classes, most at-rules (`@media`, `@font-face`,
+`@page`), grid, floats, positioning, flex cross-axis alignment (`align-items`), or the `font`
+shorthand. Grid and `@page` are reported with guidance (use flexbox/tables; set the page via
+`page.Size`/`page.Margin`). **These never throw** — each distinct
 unsupported feature is reported once through `HtmlRenderOptions.OnUnsupported` and skipped:
 
 ```csharp

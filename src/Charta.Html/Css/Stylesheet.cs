@@ -82,7 +82,10 @@ internal static class CssParser
 
             if (selectorText.StartsWith('@'))
             {
-                unsupported.Add($"CSS at-rule '{Head(selectorText)}' is not supported");
+                var head = Head(selectorText);
+                unsupported.Add(head.Equals("@page", StringComparison.OrdinalIgnoreCase)
+                    ? "CSS @page is not supported; set the page size and margins on the Charta page (page.Size / page.Margin)"
+                    : $"CSS at-rule '{head}' is not supported");
                 continue;
             }
 

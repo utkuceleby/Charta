@@ -10,11 +10,11 @@ public class HtmlRenderingTests
 {
     static HtmlRenderingTests() => FontManager.RegisterFont(SyntheticFont.Build());
 
-    private static (string Pdf, GenerationResult Result, List<string> Unsupported) Render(string html)
+    private static (string Pdf, GenerationResult Result, List<string> Unsupported) Render(string html, double? contentWidth = null)
     {
         var unsupported = new List<string>();
         var document = Document.Create(doc => doc.Page(page =>
-            page.Content().Html(html, new HtmlRenderOptions { OnUnsupported = unsupported.Add })));
+            page.Content().Html(html, new HtmlRenderOptions { OnUnsupported = unsupported.Add, ContentWidth = contentWidth })));
 
         using var buffer = new MemoryStream();
         var result = document.GeneratePdf(buffer, new PdfSaveOptions { Compress = false });
@@ -101,6 +101,44 @@ public class HtmlRenderingTests
 
         Assert.Equal(2, Lines(pre));
         Assert.Equal(1, Lines(normal));
+    }
+
+    [Fact]
+    public void PercentWidthResolvesAgainstContentWidth()
+    {
+        // With a content width, a percentage width resolves to points instead of being reported.
+        var (_, result, unsupported) = Render("<div style=\"width:25%\">CAB</div>", contentWidth: 400);
+        Assert.True(result.PageCount >= 1);
+        Assert.DoesNotContain(unsupported, m => m.Contains("percentage width", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PercentWidthWithoutContentWidthIsReported()
+    {
+        var (_, _, unsupported) = Render("<div style=\"width:50%\">CAB</div>");
+        Assert.Contains(unsupported, m => m.Contains("percentage width", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NestedPercentWidthResolves()
+    {
+        // Inner 50% of the outer 50% of 400pt = 100pt; both resolve, so nothing is reported.
+        var (_, _, unsupported) = Render(
+            "<div style=\"width:50%\"><div style=\"width:50%;background:#00ff00\">CAB</div></div>", contentWidth: 400);
+        Assert.Empty(unsupported);
+    }
+
+    [Fact]
+    public void FlexJustifyAndGridAndPageAndAlignItemsDiagnostics()
+    {
+        var (_, flexResult, flexUnsupported) = Render(
+            "<div style=\"display:flex;justify-content:space-between\"><span style=\"width:40pt\">A</span><span style=\"width:40pt\">B</span></div>");
+        Assert.True(flexResult.PageCount >= 1);
+        Assert.Empty(flexUnsupported); // justify-content is supported, not reported
+
+        Assert.Contains(Render("<div style=\"display:grid\">x</div>").Unsupported, m => m.Contains("grid", StringComparison.Ordinal));
+        Assert.Contains(Render("<div style=\"display:flex;align-items:center\">x</div>").Unsupported, m => m.Contains("cross-axis", StringComparison.Ordinal));
+        Assert.Contains(Render("<style>@page { margin: 1cm }</style><p>x</p>").Unsupported, m => m.Contains("@page", StringComparison.Ordinal));
     }
 
     [Fact]

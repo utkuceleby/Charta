@@ -16,6 +16,13 @@ public sealed class HtmlRenderOptions
     public string? BasePath { get; init; }
 
     /// <summary>
+    /// The width available to the content, in points — usually the page width minus its margins. When
+    /// set, percentage widths (<c>width: 50%</c>) resolve against it (and against resolved parent
+    /// widths when nested); when null, percentage widths are reported as unsupported.
+    /// </summary>
+    public double? ContentWidth { get; init; }
+
+    /// <summary>
     /// Invoked once per distinct unsupported feature encountered (an unknown CSS property value, a
     /// selector combinator, an inline image, and so on). Rendering never throws for these — the
     /// feature is skipped and reported here.
