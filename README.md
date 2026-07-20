@@ -229,9 +229,14 @@ installed. Registered fonts are always subset and embedded:
 
 ```csharp
 FontManager.RegisterFontFile("fonts/Inter-Regular.ttf");
+FontManager.RegisterFontFile("fonts/Inter-SemiBold.ttf");
 FontManager.RegisterFontFile("fonts/Inter-Bold.ttf");
 // The first registered family is also the default when no FontFamily(...) is set.
 ```
+
+`.Bold()`, `.SemiBold()`, and `.Italic()` select a face by weight and style. Resolution matches
+the nearest registered weight on the OS/2 axis (SemiBold is 600, Bold is 700), so register the face
+you want to use — Charta never synthesizes a heavier weight from a lighter one.
 
 Without registration Charta falls back to OS fonts (Windows font directory, fontconfig on Linux,
 macOS font folders — no native calls).

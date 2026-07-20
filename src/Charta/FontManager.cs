@@ -34,9 +34,9 @@ public static class FontManager
         Registry.Register(path);
     }
 
-    internal static FontFace? Resolve(string familyName, bool bold, bool italic) =>
-        Registry.Resolve(familyName, bold, italic);
+    internal static FontFace? Resolve(string familyName, int weight, bool italic) =>
+        Registry.Resolve(familyName, weight, italic);
 
-    internal static FontFace? ResolveDefault(bool bold, bool italic) =>
-        Registry.ResolveAnyRegistered(bold, italic);
+    internal static FontFace? ResolveDefault(int weight, bool italic) =>
+        Registry.ResolveAnyRegistered(weight, italic);
 }

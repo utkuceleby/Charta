@@ -6,7 +6,7 @@
 
   <PropertyGroup>
     <PackageId>Charta.Html</PackageId>
-    <Version>1.12.0</Version>
+    <Version>1.13.0</Version>
     <Authors>Utku Celebi</Authors>
     <Description>HTML/CSS subset rendering for Charta: turn a fragment of HTML — headings, paragraphs, lists, tables, inline styling, images and links — into a laid-out PDF. Parses with AngleSharp; the cascade and layout are Charta's own. Unsupported features are reported as diagnostics, never thrown.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

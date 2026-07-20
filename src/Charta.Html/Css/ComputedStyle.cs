@@ -72,7 +72,8 @@ internal sealed class ComputedStyle
 
     public string? FontFamily { get; set; }
 
-    public bool Bold { get; set; }
+    /// <summary>Font weight on the CSS scale (100–900). 400 is normal, 600 semi-bold, 700 bold.</summary>
+    public int Weight { get; set; } = 400;
 
     public bool Italic { get; set; }
 
@@ -136,7 +137,7 @@ internal sealed class ComputedStyle
     {
         FontSize = FontSize,
         FontFamily = FontFamily,
-        Bold = Bold,
+        Weight = Weight,
         Italic = Italic,
         Color = Color,
         TextAlign = TextAlign,

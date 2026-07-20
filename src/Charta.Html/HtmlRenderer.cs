@@ -261,9 +261,13 @@ internal sealed class HtmlRenderer
         }
 
         span.FontSize(style.FontSize).FontColor(style.Color);
-        if (style.Bold)
+        if (style.Weight >= 700)
         {
             span.Bold();
+        }
+        else if (style.Weight >= 600)
+        {
+            span.SemiBold();
         }
 
         if (style.Italic)

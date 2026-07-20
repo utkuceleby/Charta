@@ -5,6 +5,18 @@ All notable changes to Charta are documented here. The format follows
 From 1.0.0 the public API is frozen: any change shows up as a reviewable diff in the API approval
 file, and breaking changes require a major version.
 
+## [1.14.0]
+
+### Added
+
+- **Semi-bold and weight-aware font resolution.** `.SemiBold()` on `ITextDescriptor` and
+  `ITextSpanDescriptor` selects the family's weight-600 face (e.g. `.Text("Total").SemiBold()`).
+  Font resolution now matches on the OS/2 `usWeightClass` axis (100–900) instead of a coarse
+  bold/not-bold flag, so it can tell SemiBold (600) from Bold (700); when the exact weight is not
+  registered it falls back to the nearest available weight (no synthetic thickening). In
+  `Charta.Html`, `font-weight` is carried as a numeric weight, so `font-weight: 600` (and `semibold`
+  via CSS) maps to the semi-bold face; `bolder`/`lighter` compute relative to the inherited weight.
+
 ## [1.13.0]
 
 ### Added

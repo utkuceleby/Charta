@@ -13,6 +13,9 @@ internal sealed class FontFace
 
     public required bool IsItalic { get; init; }
 
+    /// <summary>OS/2 usWeightClass (100–900); falls back to 700/400 from the bold flag when absent.</summary>
+    public required int Weight { get; init; }
+
     /// <summary>True for 'glyf' outlines (embeddable today); false for CFF-flavored faces.</summary>
     public required bool HasTrueTypeOutlines { get; init; }
 

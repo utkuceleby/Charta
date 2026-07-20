@@ -197,7 +197,7 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
     private double _size = 12;
     private Color _color = Color.Black;
     private double _lineSpacing = 1.0;
-    private bool _bold;
+    private int _weight = 400;
     private bool _italic;
     private bool _underline;
     private bool _strikethrough;
@@ -231,7 +231,13 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
 
     public ITextDescriptor Bold()
     {
-        _bold = true;
+        _weight = 700;
+        return this;
+    }
+
+    public ITextDescriptor SemiBold()
+    {
+        _weight = 600;
         return this;
     }
 
@@ -296,7 +302,7 @@ internal sealed class TextDescriptor(string text) : ITextDescriptor
             text,
             new TextStyle
             {
-                Fonts = context.ResolveFonts(_family, _bold, _italic),
+                Fonts = context.ResolveFonts(_family, _weight, _italic),
                 FontSize = _size,
                 Color = _color.ToLayout(),
                 LineSpacing = _lineSpacing,
@@ -329,7 +335,7 @@ internal sealed class TextSpanDescriptor : ITextSpanDescriptor
 
     public Color TextColor { get; private set; } = Color.Black;
 
-    public bool IsBold { get; private set; }
+    public int Weight { get; private set; } = 400;
 
     public bool IsItalic { get; private set; }
 
@@ -361,7 +367,13 @@ internal sealed class TextSpanDescriptor : ITextSpanDescriptor
 
     public ITextSpanDescriptor Bold()
     {
-        IsBold = true;
+        Weight = 700;
+        return this;
+    }
+
+    public ITextSpanDescriptor SemiBold()
+    {
+        Weight = 600;
         return this;
     }
 
@@ -466,7 +478,7 @@ internal sealed class TextContentDescriptor : ITextContentDescriptor
 
             spans.Add(new StyledSpan(text, new TextStyle
             {
-                Fonts = context.ResolveFonts(span.Family, span.IsBold, span.IsItalic),
+                Fonts = context.ResolveFonts(span.Family, span.Weight, span.IsItalic),
                 FontSize = size,
                 Color = span.TextColor.ToLayout(),
                 LineSpacing = _lineSpacing,

@@ -16,7 +16,16 @@ public class FontRegistryTests
         Assert.Equal("ChartaTest", face.PostScriptName);
         Assert.False(face.IsBold);
         Assert.False(face.IsItalic);
+        Assert.Equal(400, face.Weight);
         Assert.True(face.HasTrueTypeOutlines);
+    }
+
+    [Fact]
+    public void Scanner_ReadsWeightClassFromOs2()
+    {
+        var face = Assert.Single(FontScanner.Scan(SyntheticFont.Build(weightClass: 600)));
+
+        Assert.Equal(600, face.Weight);
     }
 
     [Fact]
@@ -55,10 +64,38 @@ public class FontRegistryTests
         registry.Register(SyntheticFont.Build());
 
         // Only a regular face exists; a bold request still resolves to it rather than failing.
-        var face = registry.Resolve("Charta Test", bold: true);
+        var face = registry.Resolve("Charta Test", weight: 700);
 
         Assert.NotNull(face);
         Assert.False(face.IsBold);
+    }
+
+    [Fact]
+    public void Registry_ResolvesSemiBold_WhenThatWeightIsRegistered()
+    {
+        var registry = new FontRegistry(useSystemFonts: false);
+        registry.Register(SyntheticFont.Build());                     // weight 400
+        registry.Register(SyntheticFont.Build(weightClass: 600));     // weight 600
+        registry.Register(SyntheticFont.Build(weightClass: 700));     // weight 700
+
+        var semiBold = registry.Resolve("Charta Test", weight: 600);
+
+        Assert.NotNull(semiBold);
+        Assert.Equal(600, semiBold.Weight);
+    }
+
+    [Fact]
+    public void Registry_FallsBackToNearestWeight_WhenSemiBoldMissing()
+    {
+        var registry = new FontRegistry(useSystemFonts: false);
+        registry.Register(SyntheticFont.Build());                     // weight 400
+        registry.Register(SyntheticFont.Build(weightClass: 700));     // weight 700
+
+        // No 600 face exists; 700 is nearer to 600 than 400, so it wins.
+        var face = registry.Resolve("Charta Test", weight: 600);
+
+        Assert.NotNull(face);
+        Assert.Equal(700, face.Weight);
     }
 
     [Fact]
@@ -72,7 +109,7 @@ public class FontRegistryTests
         var registry = new FontRegistry();
 
         var regular = registry.Resolve("Arial");
-        var bold = registry.Resolve("Arial", bold: true);
+        var bold = registry.Resolve("Arial", weight: 700);
 
         Assert.NotNull(regular);
         Assert.False(regular.IsBold);

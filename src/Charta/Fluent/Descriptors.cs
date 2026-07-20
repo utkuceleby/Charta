@@ -99,8 +99,11 @@ public interface ITextDescriptor
     /// <summary>Line height multiplier over the font's natural line height. Default: 1.0.</summary>
     ITextDescriptor LineSpacing(double multiplier);
 
-    /// <summary>Selects the bold face of the family.</summary>
+    /// <summary>Selects the bold face of the family (weight 700).</summary>
     ITextDescriptor Bold();
+
+    /// <summary>Selects the semi-bold face of the family (weight 600), falling back to the nearest weight.</summary>
+    ITextDescriptor SemiBold();
 
     /// <summary>Selects the italic face of the family.</summary>
     ITextDescriptor Italic();
@@ -142,8 +145,11 @@ public interface ITextSpanDescriptor
     /// <summary>Text color. Default: black.</summary>
     ITextSpanDescriptor FontColor(Color color);
 
-    /// <summary>Selects the bold face of the family.</summary>
+    /// <summary>Selects the bold face of the family (weight 700).</summary>
     ITextSpanDescriptor Bold();
+
+    /// <summary>Selects the semi-bold face of the family (weight 600), falling back to the nearest weight.</summary>
+    ITextSpanDescriptor SemiBold();
 
     /// <summary>Selects the italic face of the family.</summary>
     ITextSpanDescriptor Italic();

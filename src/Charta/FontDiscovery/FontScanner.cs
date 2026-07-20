@@ -64,7 +64,7 @@ internal static class FontScanner
         var numTables = reader.ReadUInt16();
         reader.Skip(6);
 
-        ReadOnlyMemory<byte> name = default, head = default;
+        ReadOnlyMemory<byte> name = default, head = default, os2 = default;
         for (var i = 0; i < numTables; i++)
         {
             var tag = Encoding.ASCII.GetString(reader.ReadBytes(4));
@@ -84,6 +84,9 @@ internal static class FontScanner
                 case "head":
                     head = data.Slice((int)offset, (int)length);
                     break;
+                case "OS/2":
+                    os2 = data.Slice((int)offset, (int)length);
+                    break;
                 default:
                     break;
             }
@@ -95,6 +98,7 @@ internal static class FontScanner
         }
 
         var macStyle = BinaryPrimitives.ReadUInt16BigEndian(head.Span[44..]);
+        var isBold = (macStyle & 0x01) != 0;
         var family = ReadName(name, 16) ?? ReadName(name, 1);
         var postScript = ReadName(name, 6);
         if (family is null)
@@ -102,12 +106,19 @@ internal static class FontScanner
             return null;
         }
 
+        // OS/2 usWeightClass (offset 4) is the real weight axis and the only way to tell SemiBold
+        // (600) from Bold (700); fall back to the coarse bold flag when the table is missing.
+        var weight = os2.Length >= 6
+            ? BinaryPrimitives.ReadUInt16BigEndian(os2.Span[4..])
+            : (isBold ? 700 : 400);
+
         var face = new FontFace(path is null ? data : default)
         {
             FamilyName = family,
             PostScriptName = postScript ?? family,
-            IsBold = (macStyle & 0x01) != 0,
+            IsBold = isBold,
             IsItalic = (macStyle & 0x02) != 0,
+            Weight = weight,
             HasTrueTypeOutlines = version != OttoTag,
             CollectionIndex = collectionIndex,
             Path = path,

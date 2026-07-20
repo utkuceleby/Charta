@@ -24,9 +24,10 @@ internal sealed class BuildContext
     /// <summary>Known only during the second pass of a TotalPages() document.</summary>
     public int? TotalPages { get; init; }
 
-    public FontChain ResolveFonts(string? familyName, bool bold, bool italic)
+    public FontChain ResolveFonts(string? familyName, int weight, bool italic)
     {
-        if (familyName is null && !bold && !italic && _defaultChain is not null)
+        var isDefault = familyName is null && weight == 400 && !italic;
+        if (isDefault && _defaultChain is not null)
         {
             return _defaultChain;
         }
@@ -34,7 +35,7 @@ internal sealed class BuildContext
         FontFace? face = null;
         if (familyName is not null)
         {
-            face = FontManager.Resolve(familyName, bold, italic);
+            face = FontManager.Resolve(familyName, weight, italic);
             if (face is null)
             {
                 throw new InvalidOperationException(
@@ -44,12 +45,12 @@ internal sealed class BuildContext
         else
         {
             // Registered fonts win the default slot: explicit registration is the reproducible path.
-            face = FontManager.ResolveDefault(bold, italic);
+            face = FontManager.ResolveDefault(weight, italic);
             if (face is null)
             {
                 foreach (var candidate in DefaultFamilies)
                 {
-                    face = FontManager.Resolve(candidate, bold, italic);
+                    face = FontManager.Resolve(candidate, weight, italic);
                     if (face is not null)
                     {
                         break;
@@ -65,7 +66,7 @@ internal sealed class BuildContext
         }
 
         var chain = new FontChain(GetFont(face));
-        if (familyName is null && !bold && !italic)
+        if (isDefault)
         {
             _defaultChain = chain;
         }

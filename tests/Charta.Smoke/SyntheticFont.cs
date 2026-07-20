@@ -18,7 +18,12 @@ namespace Charta.Smoke;
 /// </summary>
 internal static class SyntheticFont
 {
-    public static byte[] Build(char firstChar = 'A')
+    /// <param name="weightClass">
+    /// When set, an OS/2 table carrying this usWeightClass is emitted so weight-based resolution
+    /// (e.g. SemiBold = 600) can be exercised. When null, no OS/2 table is written and the face
+    /// reads as the default weight.
+    /// </param>
+    public static byte[] Build(char firstChar = 'A', int? weightClass = null)
     {
         var glyf = BuildGlyf(out var locaOffsets);
 
@@ -28,8 +33,8 @@ internal static class SyntheticFont
             loca.U16((ushort)(offset / 2));
         }
 
-        return SfntAssembler.Assemble(
-        [
+        var tables = new List<(string, byte[])>
+        {
             ("head", BuildHead()),
             ("hhea", BuildHhea()),
             ("maxp", BuildMaxp()),
@@ -40,7 +45,14 @@ internal static class SyntheticFont
             ("name", BuildName()),
             ("post", BuildPost()),
             ("GPOS", BuildGpos()),
-        ]);
+        };
+
+        if (weightClass is { } weight)
+        {
+            tables.Add(("OS/2", BuildOs2(weight)));
+        }
+
+        return SfntAssembler.Assemble([.. tables]);
     }
 
     private static byte[] BuildGlyf(out int[] locaOffsets)
@@ -186,6 +198,40 @@ internal static class SyntheticFont
         .U32(0)            // isFixedPitch
         .U32(0).U32(0).U32(0).U32(0) // memory hints
         .ToArray();
+
+    /// <summary>Minimal but well-formed OS/2 (version 4, 96 bytes) carrying the given usWeightClass.</summary>
+    private static byte[] BuildOs2(int weightClass)
+    {
+        var builder = new BigEndianBuilder()
+            .U16(4)                    // version
+            .S16(600)                  // xAvgCharWidth
+            .U16(weightClass)          // usWeightClass (offset 4)
+            .U16(5)                    // usWidthClass
+            .U16(0)                    // fsType
+            .S16(0).S16(0).S16(0).S16(0) // subscript metrics
+            .S16(0).S16(0).S16(0).S16(0) // superscript metrics
+            .S16(0).S16(0)             // strikeout size/position
+            .S16(0);                   // sFamilyClass
+
+        for (var i = 0; i < 10; i++)
+        {
+            builder.U8(0);             // panose
+        }
+
+        builder
+            .U32(0).U32(0).U32(0).U32(0) // ulUnicodeRange1..4
+            .Bytes(Encoding.ASCII.GetBytes("TEST")) // achVendID
+            .U16(0x40)                 // fsSelection (REGULAR)
+            .U16('A').U16('C')         // usFirstCharIndex, usLastCharIndex
+            .S16(800).S16(-200).S16(0) // sTypoAscender/Descender/LineGap
+            .U16(1000).U16(200)        // usWinAscent, usWinDescent
+            .U32(0).U32(0)             // ulCodePageRange1..2
+            .S16(500)                  // sxHeight (offset 86)
+            .S16(700)                  // sCapHeight (offset 88)
+            .U16(0).U16(0).U16(0);     // usDefaultChar, usBreakChar, usMaxContext
+
+        return builder.ToArray();
+    }
 
     /// <summary>GPOS with one 'kern' feature: PairPos format 1 kerning (gid 1, gid 2) by -40.</summary>
     private static byte[] BuildGpos() => new BigEndianBuilder()

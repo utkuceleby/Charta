@@ -178,6 +178,7 @@ namespace Charta
         Charta.ITextDescriptor Justify();
         Charta.ITextDescriptor LetterSpacing(double points);
         Charta.ITextDescriptor LineSpacing(double multiplier);
+        Charta.ITextDescriptor SemiBold();
         Charta.ITextDescriptor Strikethrough();
         Charta.ITextDescriptor Underline();
     }
@@ -189,6 +190,7 @@ namespace Charta
         Charta.ITextSpanDescriptor FontSize(double size);
         Charta.ITextSpanDescriptor Italic();
         Charta.ITextSpanDescriptor LetterSpacing(double points);
+        Charta.ITextSpanDescriptor SemiBold();
         Charta.ITextSpanDescriptor Strikethrough();
         Charta.ITextSpanDescriptor Subscript();
         Charta.ITextSpanDescriptor Superscript();

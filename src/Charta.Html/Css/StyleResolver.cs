@@ -85,14 +85,14 @@ internal sealed class StyleResolver
             case "td": style.Display = DisplayKind.TableCell; break;
             case "th":
                 style.Display = DisplayKind.TableCell;
-                style.Bold = true;
+                style.Weight = 700;
                 style.TextAlign = TextAlign.Center;
                 break;
 
             case "hr": style.Display = DisplayKind.Block; break;
             case "img": style.Display = DisplayKind.InlineBlock; break;
 
-            case "b" or "strong": style.Bold = true; break;
+            case "b" or "strong": style.Weight = 700; break;
             case "i" or "em" or "cite" or "var": style.Italic = true; break;
             case "u" or "ins": style.Underline = true; break;
             case "s" or "del" or "strike": style.LineThrough = true; break;
@@ -117,7 +117,7 @@ internal sealed class StyleResolver
     private static void Heading(ComputedStyle style, double scale)
     {
         style.Display = DisplayKind.Block;
-        style.Bold = true;
+        style.Weight = 700;
         style.FontSize *= scale;
         style.MarginTop = style.FontSize * 0.35;
         style.MarginBottom = style.FontSize * 0.35;
@@ -175,11 +175,13 @@ internal sealed class StyleResolver
                 break;
 
             case "font-weight":
-                style.Bold = value.ToLowerInvariant() switch
+                style.Weight = value.ToLowerInvariant() switch
                 {
-                    "bold" or "bolder" => true,
-                    "normal" or "lighter" => false,
-                    _ => int.TryParse(value, out var w) ? w >= 600 : style.Bold,
+                    "bold" => 700,
+                    "normal" => 400,
+                    "bolder" => Math.Min(900, style.Weight + 300),
+                    "lighter" => Math.Max(100, style.Weight - 300),
+                    _ => int.TryParse(value, out var w) ? Math.Clamp(w, 1, 1000) : style.Weight,
                 };
                 break;
 
